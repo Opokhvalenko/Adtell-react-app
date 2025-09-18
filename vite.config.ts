@@ -45,9 +45,6 @@ export default defineConfig({
 			}),
 	].filter(Boolean) as PluginOption[],
 
-	server: { port: 5173, open: true, strictPort: true },
-	preview: { port: 5173, open: true, strictPort: true },
-
 	build: {
 		target: "es2022",
 		sourcemap: false,
