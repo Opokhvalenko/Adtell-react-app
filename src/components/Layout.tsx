@@ -1,14 +1,11 @@
-import { type ReactNode, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+// src/components/Layout.tsx
+import { useEffect } from "react";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useThemeStore } from "../lib/store";
 import { useAuth } from "../stores/auth";
 import ThemeToggle from "./ThemeToggle";
 
-type LayoutProps = {
-	children?: ReactNode;
-};
-
-export default function Layout({ children }: LayoutProps) {
+export default function Layout() {
 	const { theme } = useThemeStore();
 	const { isLoggedIn, logout } = useAuth();
 	const navigate = useNavigate();
@@ -24,10 +21,13 @@ export default function Layout({ children }: LayoutProps) {
 
 	const btnNav =
 		"px-3 py-1 rounded-lg border text-sm font-medium transition-colors " +
+		// базовий стан
 		"border-gray-400/60 text-gray-900 dark:text-gray-100 " +
 		"hover:bg-gray-100 dark:hover:bg-gray-800 " +
+		// видимий фокус + відступ
 		"focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 " +
 		"focus:ring-offset-white dark:focus:ring-offset-gray-900 " +
+		// інверсія кольорів на фокусі (щоб текст не «зникав»)
 		"focus:bg-black focus:text-white focus:border-black " +
 		"dark:focus:bg-white dark:focus:text-black dark:focus:border-white";
 
@@ -60,7 +60,9 @@ export default function Layout({ children }: LayoutProps) {
 				</div>
 			</header>
 
-			<main className="max-w-6xl mx-auto p-4">{children}</main>
+			<main className="max-w-6xl mx-auto p-4">
+				<Outlet />
+			</main>
 		</div>
 	);
 }
