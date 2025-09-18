@@ -1,4 +1,3 @@
-//src/stores/auth.ts
 import { create } from "zustand";
 
 type AuthState = {

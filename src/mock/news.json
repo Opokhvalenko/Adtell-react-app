@@ -1,0 +1,26 @@
+[
+	{
+		"id": 1,
+		"title": "React 19 Released",
+		"description": "React 19 brings new features and improvements.",
+		"image": "https://picsum.photos/seed/react/600/400"
+	},
+	{
+		"id": 2,
+		"title": "Vite 7 Update",
+		"description": "Vite 7 improves performance and DX.",
+		"image": "https://picsum.photos/seed/vite/600/400"
+	},
+	{
+		"id": 3,
+		"title": "AI in 2025",
+		"description": "Artificial intelligence continues to transform industries.",
+		"image": "https://picsum.photos/seed/ai/600/400"
+	},
+	{
+		"id": 4,
+		"title": "Tailwind v4 Arrives",
+		"description": "Tailwind CSS v4 introduces a new architecture and features.",
+		"image": "https://picsum.photos/seed/tailwind/600/400"
+	}
+]
