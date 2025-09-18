@@ -3,7 +3,8 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import Layout from "../components/Layout";
 
 const Feed = lazy(() => import("../features/news/Feed"));
-
+const NewsModal = lazy(() => import("../features/news/NewsModal"));
+const ArticlePage = lazy(() => import("../features/news/ArticlePage"));
 
 export default function AppRoutes() {
 	const location = useLocation();
@@ -21,12 +22,28 @@ export default function AppRoutes() {
 								<Feed />
 							</Suspense>
 						}
-					/>		
+					/>
+					<Route
+						path="news/:id"
+						element={
+							<Suspense fallback={loader}>
+								<ArticlePage />
+							</Suspense>
+						}
+					/>
 				</Route>
 			</Routes>
 			{state?.backgroundLocation && (
 				<Routes>
 					<Route element={<Layout />}>
+						<Route
+							path="news/:id"
+							element={
+								<Suspense fallback={loader}>
+									<NewsModal />
+								</Suspense>
+							}
+						/>
 					</Route>
 				</Routes>
 			)}
