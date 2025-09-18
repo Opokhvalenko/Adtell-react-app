@@ -1,4 +1,3 @@
-// src/components/Layout.tsx
 import { useEffect } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useThemeStore } from "../lib/store";

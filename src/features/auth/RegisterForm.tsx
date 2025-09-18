@@ -1,4 +1,3 @@
-// src/features/auth/RegisterForm.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useId } from "react";
 import { useForm } from "react-hook-form";
