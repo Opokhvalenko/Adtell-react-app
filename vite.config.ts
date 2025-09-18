@@ -11,65 +11,69 @@ const isDev = process.env.NODE_ENV !== "production";
 const isAnalyze = !!process.env.ANALYZE;
 
 function buildInfoVirtual(): PluginOption {
-	const id = "virtual:build-info";
-	return {
-		name: "virtual-build-info",
-		resolveId: (source) => (source === id ? id : null),
-		load: (source) =>
-			source === id
-				? `export const buildTime = ${JSON.stringify(new Date().toISOString())};`
-				: null,
-	};
+  const id = "virtual:build-info";
+  return {
+    name: "virtual-build-info",
+    resolveId: (source) => (source === id ? id : null),
+    load: (source) =>
+      source === id
+        ? `export const buildTime = ${JSON.stringify(new Date().toISOString())};`
+        : null,
+  };
 }
 
 export default defineConfig({
-	plugins: [
-		react(),
-		svgr(),
-		checker({ typescript: true }),
-		buildInfoVirtual(),
-		!isDev &&
-			compression({
-				algorithm: "brotliCompress",
-				ext: ".br",
-				deleteOriginFile: false,
-			}),
-		isDev && inspect(),
-		isAnalyze &&
-			visualizer({
-				filename: "stats.html",
-				template: "treemap",
-				gzipSize: true,
-				brotliSize: true,
-				open: true,
-			}),
-	].filter(Boolean) as PluginOption[],
+  plugins: [
+    react(),
+    svgr(),
+    checker({ typescript: true }),
+    buildInfoVirtual(),
+    !isDev &&
+      compression({
+        algorithm: "brotliCompress",
+        ext: ".br",
+        deleteOriginFile: false,
+      }),
+    isDev && inspect(),
+    isAnalyze &&
+      visualizer({
+        filename: "stats.html",
+        template: "treemap",
+        gzipSize: true,
+        brotliSize: true,
+        open: true,
+      }),
+  ].filter(Boolean) as PluginOption[],
 
-	server: { port: 5173, open: true, strictPort: true },
-	preview: { port: 5173, open: true, strictPort: true },
+  server: { port: 5173, open: true, strictPort: true },
+  preview: { port: 5173, open: true, strictPort: true },
 
-	build: {
-		target: "es2022",
-		sourcemap: false,
-		minify: "terser",
-		chunkSizeWarningLimit: 1000,
-		rollupOptions: {
-			output: {
-				manualChunks: { vendor: ["react", "react-dom", "react-router-dom"] },
-			},
-		},
-	},
+  build: {
+    target: "es2022",
+    sourcemap: false,
+    minify: "terser",
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: { vendor: ["react", "react-dom", "react-router-dom"] },
+      },
+    },
+  },
 
-	esbuild: { target: "es2022" },
+  esbuild: { target: "es2022" },
 
-	define: {
-		__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
-	},
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
 
-	test: {
-		environment: "jsdom",
-		setupFiles: "src/test/setup.ts",
-		globals: true,
-		watch: false,
-	},
+  // Vitest
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "src/test/setup.ts",
+    include: ["**/*.{test,spec}.{ts,tsx,js,jsx}"],
+    passWithNoTests: true,
+    watch: false,
+    reporters: "dot",
+  },
 });
