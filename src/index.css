@@ -1,76 +1,86 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: "Open Sans";
-  src: url("/fonts/Open_Sans/OpenSans-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
+	font-family: "Open Sans";
+	src: url("/fonts/Open_Sans/OpenSans-Light.woff2") format("woff2");
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
 }
 @font-face {
-  font-family: "Open Sans";
-  src: url("/fonts/Open_Sans/OpenSans-Medium.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
+	font-family: "Open Sans";
+	src: url("/fonts/Open_Sans/OpenSans-Medium.woff2") format("woff2");
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
 }
 @font-face {
-  font-family: "Open Sans";
-  src: url("/fonts/Open_Sans/OpenSans-SemiBold.woff2") format("woff2");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
+	font-family: "Open Sans";
+	src: url("/fonts/Open_Sans/OpenSans-SemiBold.woff2") format("woff2");
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
 }
 @font-face {
-  font-family: "Open Sans";
-  src: url("/fonts/Open_Sans/OpenSans-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
+	font-family: "Open Sans";
+	src: url("/fonts/Open_Sans/OpenSans-Bold.woff2") format("woff2");
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
 }
 @font-face {
-  font-family: "Open Sans";
-  src: url("/fonts/Open_Sans/OpenSans-Italic.woff2") format("woff2");
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
+	font-family: "Open Sans";
+	src: url("/fonts/Open_Sans/OpenSans-Italic.woff2") format("woff2");
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
 }
 
 @layer base {
-  :root { color-scheme: light; }
-  .dark { color-scheme: dark; }
+	:root {
+		color-scheme: light;
+	}
+	.dark {
+		color-scheme: dark;
+	}
 
-  body { @apply min-h-screen font-sans bg-gray-100 text-gray-900 antialiased; }
-  .dark body { @apply bg-gray-900 text-gray-100; }
+	body {
+		@apply min-h-screen font-sans bg-gray-100 text-gray-900 antialiased;
+	}
+	.dark body {
+		@apply bg-gray-900 text-gray-100;
+	}
 
-  /* фокус видно і при кліку, і з клавіатури */
-  :is(a,button,[role="button"],input,select,textarea):focus {
-    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white;
-  }
-  :is(a,button,[role="button"],input,select,textarea):focus-visible {
-    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white;
-  }
-  .dark :is(a,button,[role="button"],input,select,textarea):focus,
-  .dark :is(a,button,[role="button"],input,select,textarea):focus-visible {
-    @apply ring-offset-gray-900;
-  }
+	/* фокус видно і при кліку, і з клавіатури */
+	:is(a, button, [role="button"], input, select, textarea):focus {
+		@apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white;
+	}
+	:is(a, button, [role="button"], input, select, textarea):focus-visible {
+		@apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white;
+	}
+	.dark :is(a, button, [role="button"], input, select, textarea):focus,
+	.dark :is(a, button, [role="button"], input, select, textarea):focus-visible {
+		@apply ring-offset-gray-900;
+	}
 }
 
 @layer components {
-  /* навігаційна кнопка — добре видно у темній темі навіть без фокуса */
-  .btn-nav {
-    @apply inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium
+	/* навігаційна кнопка — добре видно у темній темі навіть без фокуса */
+	.btn-nav {
+		@apply inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium
            border shadow-sm transition-colors
            bg-white/80 text-gray-900 border-gray-300 hover:bg-white
            dark:bg-white/10 dark:text-gray-100 dark:border-white/20 dark:hover:bg-white/15;
-  }
-  .btn-nav:active { @apply translate-y-px; }
+	}
+	.btn-nav:active {
+		@apply translate-y-px;
+	}
 
-  /* основна синя кнопка */
-  .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium
+	/* основна синя кнопка */
+	.btn-primary {
+		@apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium
            text-white bg-blue-600 hover:bg-blue-500
            focus-visible:ring-2 focus-visible:ring-blue-500
            focus-visible:ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
-  }
+	}
 }
