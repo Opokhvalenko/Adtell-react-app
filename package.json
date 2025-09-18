@@ -15,7 +15,7 @@
 		"check": "npm run type-check && npm run biome:check",
 		"build": "npm run check && vite build",
 		"test": "vitest --passWithNoTests",
-        "test:run": "vitest run --passWithNoTests",
+		"test:run": "vitest run --passWithNoTests",
 		"test:ui": "vitest --ui",
 		"preview": "vite preview"
 	},
