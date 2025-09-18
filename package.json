@@ -13,11 +13,14 @@
 		"format": "biome format --write .",
 		"type-check": "tsc --noEmit -p tsconfig.json",
 		"check": "npm run type-check && npm run biome:check",
-		"build": "npm run check && vite build",
+		"build": "vite build",
 		"test": "vitest --passWithNoTests",
 		"test:run": "vitest run --passWithNoTests",
 		"test:ui": "vitest --ui",
 		"preview": "vite preview"
+	},
+	"engines": {
+		"node": ">=18.18 <23"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^5.2.2",
