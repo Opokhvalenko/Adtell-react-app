@@ -1,3 +1,4 @@
+//src/features/new/ActiclePage.tsx
 import { Link, useParams } from "react-router-dom";
 import newsData from "../../mock/news.json";
 import type { NewsItem } from "../../types/news";
