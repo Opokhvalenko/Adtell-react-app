@@ -8,7 +8,15 @@
 	},
 
 	"files": {
-		"includes": ["**", "!node_modules", "!dist", "!build", "!.vite", "!.cache"],
+		"includes": [
+			"**",
+			"!node_modules",
+			"!dist",
+			"!build",
+			"!.vite",
+			"!.cache",
+			"!src/tailwind.css"
+		],
 		"ignoreUnknown": false
 	},
 
