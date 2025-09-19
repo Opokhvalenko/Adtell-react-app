@@ -1,10 +1,11 @@
-import { defineConfig, type PluginOption, type UserConfig } from "vite";
+import { type PluginOption, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
 import checker from "vite-plugin-checker";
 import compression from "vite-plugin-compression";
 import inspect from "vite-plugin-inspect";
 import { visualizer } from "rollup-plugin-visualizer";
+import { defineConfig } from "vitest/config";
 import virtualBuildInfo from "./build/plugins/virtualBuildInfo";
 
 export default defineConfig(({ mode }): UserConfig => {
@@ -64,5 +65,13 @@ export default defineConfig(({ mode }): UserConfig => {
     define: {
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
+
+    test: {
+      environment: "jsdom",
+      setupFiles: "src/test/setup.ts",
+      globals: true,
+      watch: false,
+    },
+    
   };
 });
