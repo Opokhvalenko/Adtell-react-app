@@ -1,3 +1,4 @@
+//src/features/new/Feed.tsx
 import { Link, useLocation } from "react-router-dom";
 import newsData from "../../mock/news.json";
 import type { NewsItem } from "../../types/news";

@@ -1,3 +1,4 @@
+//src/features/new/NewsModal.tsx
 import { useCallback, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
