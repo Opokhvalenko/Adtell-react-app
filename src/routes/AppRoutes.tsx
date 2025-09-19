@@ -1,12 +1,12 @@
+import type { ReactElement } from "react";
 import { lazy, Suspense } from "react";
 import {
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-  type Location,
+	type Location,
+	Navigate,
+	Route,
+	Routes,
+	useLocation,
 } from "react-router-dom";
-import type { ReactElement } from "react";
 import Layout from "../components/Layout";
 import { useAuth } from "../stores/auth";
 
@@ -17,72 +17,72 @@ const ArticlePage = lazy(() => import("../features/news/ArticlePage"));
 const NewsModal = lazy(() => import("../features/news/NewsModal"));
 
 function PrivateRoute({ children }: { children: ReactElement }) {
-  const { isLoggedIn } = useAuth();
-  return isLoggedIn ? children : <Navigate to="/login" replace />;
+	const { isLoggedIn } = useAuth();
+	return isLoggedIn ? children : <Navigate to="/login" replace />;
 }
 
 function PublicOnlyRoute({ children }: { children: ReactElement }) {
-  const { isLoggedIn } = useAuth();
-  return !isLoggedIn ? children : <Navigate to="/" replace />;
+	const { isLoggedIn } = useAuth();
+	return !isLoggedIn ? children : <Navigate to="/" replace />;
 }
 
 export default function AppRoutes() {
-  const location = useLocation();
-  const state = location.state as { backgroundLocation?: Location } | undefined;
+	const location = useLocation();
+	const state = location.state as { backgroundLocation?: Location } | undefined;
 
-  const loader = <div className="p-4">Loading…</div>;
+	const loader = <div className="p-4">Loading…</div>;
 
-  return (
-    <Suspense fallback={loader}>
-      {/* основний рендер: фон для модалки або звичайний контент */}
-      <Routes location={state?.backgroundLocation || location}>
-        <Route element={<Layout />}>
-          <Route index element={<Feed />} />
+	return (
+		<Suspense fallback={loader}>
+			{/* основний рендер: фон для модалки або звичайний контент */}
+			<Routes location={state?.backgroundLocation || location}>
+				<Route element={<Layout />}>
+					<Route index element={<Feed />} />
 
-          <Route
-            path="login"
-            element={
-              <PublicOnlyRoute>
-                <LoginForm />
-              </PublicOnlyRoute>
-            }
-          />
+					<Route
+						path="login"
+						element={
+							<PublicOnlyRoute>
+								<LoginForm />
+							</PublicOnlyRoute>
+						}
+					/>
 
-          <Route
-            path="register"
-            element={
-              <PublicOnlyRoute>
-                <RegisterForm />
-              </PublicOnlyRoute>
-            }
-          />
+					<Route
+						path="register"
+						element={
+							<PublicOnlyRoute>
+								<RegisterForm />
+							</PublicOnlyRoute>
+						}
+					/>
 
-          <Route
-            path="news/:id"
-            element={
-              <PrivateRoute>
-                <ArticlePage />
-              </PrivateRoute>
-            }
-          />
-        </Route>
-      </Routes>
+					<Route
+						path="news/:id"
+						element={
+							<PrivateRoute>
+								<ArticlePage />
+							</PrivateRoute>
+						}
+					/>
+				</Route>
+			</Routes>
 
-      {/* модалка поверх фону — тільки якщо прийшли з backgroundLocation */}
-      {state?.backgroundLocation && (
-        <Routes>
-          <Route element={<Layout />}>
-            <Route
-              path="news/:id"
-              element={
-                <PrivateRoute>
-                  <NewsModal />
-                </PrivateRoute>
-              }
-            />
-          </Route>
-        </Routes>
-      )}
-    </Suspense>
-  );
+			{/* модалка поверх фону — тільки якщо прийшли з backgroundLocation */}
+			{state?.backgroundLocation && (
+				<Routes>
+					<Route element={<Layout />}>
+						<Route
+							path="news/:id"
+							element={
+								<PrivateRoute>
+									<NewsModal />
+								</PrivateRoute>
+							}
+						/>
+					</Route>
+				</Routes>
+			)}
+		</Suspense>
+	);
 }
