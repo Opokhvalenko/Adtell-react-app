@@ -1,6 +1,6 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+#!/bin/sh
+set -e
 
 echo "⏱ biome + type-check (staged/global)…"
-npm run biome:fix || exit 1
-npm run type-check || exit 1
+npm run biome:fix
+npm run type-check
