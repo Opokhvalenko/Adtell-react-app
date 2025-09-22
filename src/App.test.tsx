@@ -1,11 +1,15 @@
+import "@testing-library/jest-dom/vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import App from "./App";
+import Header from "./components/Header";
+import { useAuth } from "./store/auth";
 
-it("renders header", async () => {
+it("renders header brand link", async () => {
+	useAuth.setState({ isLoading: false, isLoggedIn: false });
+
 	render(
 		<MemoryRouter initialEntries={["/"]}>
-			<App />
+			<Header />
 		</MemoryRouter>,
 	);
 

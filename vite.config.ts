@@ -1,11 +1,12 @@
+import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 import type { PluginOption, UserConfig } from "vite";
+import { defineConfig } from "vite";
 import checker from "vite-plugin-checker";
 import compression from "vite-plugin-compression";
 import inspect from "vite-plugin-inspect";
 import svgr from "vite-plugin-svgr";
-import { defineConfig } from "vitest/config";
 import virtualBuildInfo from "./build/plugins/virtualBuildInfo";
 
 export default defineConfig(({ mode }): UserConfig => {
@@ -14,27 +15,24 @@ export default defineConfig(({ mode }): UserConfig => {
 	const isCI = !!process.env.CI;
 
 	return {
+		resolve: {
+			alias: {
+				"@": fileURLToPath(new URL("./src", import.meta.url)),
+			},
+		},
+
 		plugins: [
 			svgr(),
 			react(),
-
 			checker({ typescript: true }),
-
-			// наш окремий модуль-плагін
 			virtualBuildInfo(),
-
-			// компресія лише в проді
 			!isDev &&
 				compression({
 					algorithm: "brotliCompress",
 					ext: ".br",
 					deleteOriginFile: false,
 				}),
-
-			// інспектор лише у деві
 			isDev && inspect(),
-
-			// аналіз бандла за прапорцем
 			isAnalyze &&
 				visualizer({
 					filename: "stats.html",
@@ -52,23 +50,11 @@ export default defineConfig(({ mode }): UserConfig => {
 			chunkSizeWarningLimit: 1000,
 			rollupOptions: {
 				output: {
-					// стабільне виділення вендора
-					manualChunks: {
-						vendor: ["react", "react-dom", "react-router-dom"],
-					},
+					manualChunks: { vendor: ["react", "react-dom", "react-router-dom"] },
 				},
 			},
 		},
 
-		define: {
-			__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
-		},
-
-		test: {
-			environment: "jsdom",
-			setupFiles: "src/test/setup.ts",
-			globals: true,
-			watch: false,
-		},
+		define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
 	};
 });

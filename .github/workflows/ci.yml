@@ -19,11 +19,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -39,14 +37,12 @@ jobs:
       - name: Type check + Biome
         run: npm run check
 
-      # Запускаємо тести тільки якщо знайдено хоча б один файл тестів
       - name: Unit tests (Vitest)
-        if: ${{ hashFiles('**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx', '**/*.test.js', '**/*.test.jsx', '**/*.spec.js', '**/*.spec.jsx') != '' }}
+        if: ${{ hashFiles('**/*.test.{ts,tsx,js,jsx}', '**/*.spec.{ts,tsx,js,jsx}') != '' }}
         run: npm run test:run
         env:
           CI: true
 
-      # Білд лише на пуш у main (PR-и не білдимо)
       - name: Build
         if: github.event_name != 'pull_request'
-        run: npx vite build
+        run: npm run build

@@ -1,24 +1,21 @@
-import { create } from "zustand";
+import { createStore } from "../lib/zustand";
 
 type Theme = "light" | "dark";
 
-function getInitialTheme(): Theme {
+function readInitialTheme(): Theme {
 	try {
-		// SSR / тести
 		if (typeof window === "undefined") return "light";
-
 		const saved = localStorage.getItem("theme");
 		if (saved === "light" || saved === "dark") return saved;
-
 		if (typeof window.matchMedia === "function") {
 			return window.matchMedia("(prefers-color-scheme: dark)").matches
 				? "dark"
 				: "light";
 		}
-		return "light";
 	} catch {
-		return "light";
+		/* ignore */
 	}
+	return "light";
 }
 
 function applyThemeToDOM(t: Theme) {
@@ -34,25 +31,28 @@ function applyThemeToDOM(t: Theme) {
 
 interface ThemeState {
 	theme: Theme;
+	ensureApplied: () => void;
 	setTheme: (t: Theme) => void;
 	toggleTheme: () => void;
 }
 
-export const useThemeStore = create<ThemeState>((set, get) => {
-	const initial = getInitialTheme();
-	// синхронізуємо DOM одразу при створенні стора
-	applyThemeToDOM(initial);
-
-	return {
-		theme: initial,
-		setTheme: (t) => {
-			applyThemeToDOM(t);
-			set({ theme: t });
-		},
-		toggleTheme: () => {
-			const next: Theme = get().theme === "dark" ? "light" : "dark";
-			applyThemeToDOM(next);
-			set({ theme: next });
-		},
-	};
-});
+export const useThemeStore = createStore<ThemeState>(
+	"theme",
+	(set, get) => {
+		const initial = readInitialTheme();
+		return {
+			theme: initial,
+			ensureApplied: () => applyThemeToDOM(get().theme),
+			setTheme: (t) => {
+				applyThemeToDOM(t);
+				set({ theme: t });
+			},
+			toggleTheme: () => {
+				const next: Theme = get().theme === "dark" ? "light" : "dark";
+				applyThemeToDOM(next);
+				set({ theme: next });
+			},
+		};
+	},
+	{ persist: false },
+);

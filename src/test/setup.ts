@@ -18,7 +18,6 @@ if (!("matchMedia" in window)) {
 	});
 }
 
-// ResizeObserver (опційно)
 if (!("ResizeObserver" in window)) {
 	class MockResizeObserver {
 		observe() {}

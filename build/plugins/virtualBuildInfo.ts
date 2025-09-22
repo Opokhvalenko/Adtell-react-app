@@ -18,4 +18,4 @@ export default function virtualBuildInfo(): PluginOption {
       return null;
     },
   };
-}
+}       
