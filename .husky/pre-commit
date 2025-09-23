@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+
+echo "⏱ biome + type-check (staged/global)…"
+npm run biome:fix
+npm run type-check

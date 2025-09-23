@@ -1,15 +1,35 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
 
-/* Далі — твій код без змін */
 @font-face {
 	font-family: "Open Sans";
-	src: url("/fonts/Open_Sans/OpenSans-Light.woff2") format("woff2");
+	src: url("/fonts/OpenSans-Light.woff2") format("woff2");
 	font-weight: 300;
 	font-style: normal;
 	font-display: swap;
 }
-/* ... (інші @font-face як у тебе) ... */
+@font-face {
+	font-family: "Open Sans";
+	src: url("/fonts/OpenSans-Medium.woff2") format("woff2");
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Open Sans";
+	src: url("/fonts/OpenSans-SemiBold.woff2") format("woff2");
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Open Sans";
+	src: url("/fonts/OpenSans-Bold.woff2") format("woff2");
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
 
 @layer base {
 	:root {
