@@ -22,3 +22,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+#  Build artifacts
+src/tailwind.css
+coverage
+*.coverage
+.cache
+.tmp
+tmp
+out
+build
+
+# Env files 
+.env
+.env.local
+.env.*.local
+
+# OS/Editor extras (доповнення) 
+*.orig
+*.rej
