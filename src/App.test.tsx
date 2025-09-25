@@ -14,6 +14,6 @@ it("renders header brand link", async () => {
 	);
 
 	const header = await screen.findByRole("banner");
-	const brandLink = within(header).getByRole("link", { name: /^News App$/i });
-	expect(brandLink).toBeInTheDocument();
+	const brand = within(header).getByRole("link", { name: /^News App$/i });
+	expect(brand).toBeInTheDocument();
 });

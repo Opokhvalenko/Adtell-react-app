@@ -1,9 +1,13 @@
 import { buildTime } from "virtual:build-info";
 
 export default function Footer() {
-	const bt =
-		(typeof __BUILD_TIME__ !== "undefined" && __BUILD_TIME__) || buildTime;
-	const builtAt = new Date(bt).toLocaleString();
+	const iso =
+		buildTime ??
+		(typeof __BUILD_TIME__ !== "undefined"
+			? __BUILD_TIME__
+			: new Date().toISOString());
+
+	const builtAt = new Date(iso).toLocaleString();
 
 	return (
 		<footer className="mt-10 border-t dark:border-gray-700">

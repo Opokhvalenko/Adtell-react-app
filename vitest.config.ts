@@ -6,6 +6,13 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
+
+			"virtual:ads-config": fileURLToPath(
+				new URL("./src/test/mocks/virtual-ads-config.ts", import.meta.url),
+			),
+			"virtual:ads-module": fileURLToPath(
+				new URL("./src/test/mocks/virtual-ads-module.ts", import.meta.url),
+			),
 		},
 	},
 	plugins: [react()],

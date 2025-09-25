@@ -6,6 +6,8 @@ import App from "./App";
 import { queryClient } from "./lib/query";
 import { ErrorBoundary } from "./reporting/ErrorBoundary";
 
+import("virtual:ads-module").then((m) => m.initAds?.()).catch(() => {});
+
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root #root not found");
 

@@ -2,22 +2,26 @@ import { lazy, type ReactElement, Suspense, useEffect } from "react";
 import {
 	createBrowserRouter,
 	Navigate,
+	type RouteObject,
 	RouterProvider,
 } from "react-router-dom";
-import Layout from "../components/Layout";
-import Loader from "../components/Loader";
-import { useAuth } from "../store/auth";
 
-const Feed = lazy(() => import("../features/news/Feed"));
-const ArticlePage = lazy(() => import("../features/news/ArticlePage"));
-const NewsModal = lazy(() => import("../features/news/NewsModal"));
-const LoginForm = lazy(() => import("../features/auth/LoginForm"));
-const RegisterForm = lazy(() => import("../features/auth/RegisterForm"));
+import Layout from "@/components/Layout";
+import Loader from "@/components/Loader";
+import { useAuth } from "@/store/auth";
+
+const Feed = lazy(() => import("@/features/news/Feed"));
+const ArticlePage = lazy(() => import("@/features/news/ArticlePage"));
+const NewsModal = lazy(() => import("@/features/news/NewsModal"));
+const LoginForm = lazy(() => import("@/features/auth/LoginForm"));
+const RegisterForm = lazy(() => import("@/features/auth/RegisterForm"));
+const AdsDebugPage = lazy(() => import("@/features/ads/AdsDebugPage"));
 
 function RequireAuth({ children }: { children: ReactElement }) {
 	const { isLoggedIn } = useAuth();
 	return isLoggedIn ? children : <Navigate to="/login" replace />;
 }
+
 function PublicOnly({ children }: { children: ReactElement }) {
 	const { isLoggedIn } = useAuth();
 	return !isLoggedIn ? children : <Navigate to="/" replace />;
@@ -32,7 +36,9 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 	return <>{children}</>;
 }
 
-const router = createBrowserRouter([
+const ADS_DEBUG = import.meta.env.VITE_ADS_DEBUG === "true";
+
+const routes = [
 	{
 		element: (
 			<AuthBootstrap>
@@ -65,6 +71,15 @@ const router = createBrowserRouter([
 					</RequireAuth>
 				),
 			},
+			// додаємо сторінку дебага лише коли увімкнено через ENV
+			...(ADS_DEBUG
+				? ([
+						{
+							path: "ads-debug",
+							element: <AdsDebugPage />,
+						},
+					] as const)
+				: []),
 		],
 	},
 	{
@@ -75,7 +90,9 @@ const router = createBrowserRouter([
 			</RequireAuth>
 		),
 	},
-]);
+] satisfies RouteObject[];
+
+const router = createBrowserRouter(routes);
 
 export default function AppRoutes() {
 	return (

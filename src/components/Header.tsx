@@ -1,4 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
+import { ADS_DEBUG } from "virtual:ads-config";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../store/auth";
 import Loader from "./Loader";
 import ThemeToggle from "./ThemeToggle";
@@ -6,11 +7,16 @@ import ThemeToggle from "./ThemeToggle";
 export default function Header() {
 	const { isLoggedIn, isLoading, logout } = useAuth();
 	const navigate = useNavigate();
+	const { pathname } = useLocation();
 
 	const handleLogout = () => {
 		logout();
 		navigate("/", { replace: true });
 	};
+
+	const isAdsDebug = pathname.startsWith("/ads-debug");
+	const adsBtnLabel = isAdsDebug ? "Home" : "Ads test";
+	const adsBtnHref = isAdsDebug ? "/" : "/ads-debug";
 
 	return (
 		<header className="border-b dark:border-white/20">
@@ -23,6 +29,16 @@ export default function Header() {
 					<Loader label="Loading…" className="p-0 text-sm opacity-70" />
 				) : (
 					<div className="flex items-center gap-2">
+						{/* показуємо перемикач сторінок лише коли дозволено дебаг */}
+						{ADS_DEBUG && (
+							<Link to={adsBtnHref} className="btn-nav">
+								{adsBtnLabel}
+							</Link>
+						)}
+
+						{/* перемикач теми завжди присутній */}
+						<ThemeToggle className="btn-nav" />
+
 						{isLoggedIn ? (
 							<button type="button" onClick={handleLogout} className="btn-nav">
 								Logout
@@ -37,7 +53,6 @@ export default function Header() {
 								</Link>
 							</>
 						)}
-						<ThemeToggle className="btn-nav" />
 					</div>
 				)}
 			</div>
