@@ -20,9 +20,7 @@ export default function CopyButton({
 					setCopied(true);
 					onCopied?.();
 					setTimeout(() => setCopied(false), 1500);
-				} catch {
-					// ignore
-				}
+				} catch {}
 			}}
 			aria-live="polite"
 		>

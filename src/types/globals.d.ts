@@ -1,1 +1,10 @@
-declare const __BUILD_TIME__: string;
+declare global {
+	const __BUILD_TIME__: string;
+
+	interface Window {
+		pbjs?: unknown;
+		googletag?: unknown;
+		__adslog?: Array<{ ts: number; type: string; payload: unknown }>;
+	}
+}
+export {};
