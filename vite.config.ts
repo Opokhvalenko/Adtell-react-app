@@ -17,17 +17,21 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
 		resolveId: (id) => (id === "virtual:ads-config" ? id : null),
 		load(id) {
 			if (id !== "virtual:ads-config") return null;
+
 			const enablePrebid = env.VITE_ENABLE_PREBID === "true";
 			const enableGAM = env.VITE_ENABLE_GAM === "true";
 			const debug = env.VITE_ADS_DEBUG === "true";
 			const enableBidmatic = env.VITE_ENABLE_BIDMATIC === "true";
 			const bidmaticSource = Number(env.VITE_BIDMATIC_SOURCE || 0);
+			const gamNetworkCalls = env.VITE_GAM_NETWORK !== "false";
+
 			return `
         export const ENABLE_PREBID = ${enablePrebid};
         export const ENABLE_GAM    = ${enableGAM};
         export const ADS_DEBUG     = ${debug};
         export const ENABLE_BIDMATIC = ${enableBidmatic};
         export const BIDMATIC_SOURCE = ${bidmaticSource};
+        export const GAM_NETWORK_CALLS = ${gamNetworkCalls};
       `;
 		},
 	};
