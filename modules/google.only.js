@@ -3,6 +3,7 @@
 // Чистий GAM з «сірими банерами», коли інвентар порожній або мережеві виклики вимкнені.
 
 import { ENABLE_GAM, GAM_NETWORK_CALLS } from "virtual:ads-config";
+import { composeAdsCss } from "/modules/ads.styles.js";
 
 const GPT_SRC = "https://securepubads.g.doubleclick.net/tag/js/gpt.js";
 const USE_GAM = ENABLE_GAM && !!GAM_NETWORK_CALLS;
@@ -44,14 +45,11 @@ function injectStylesOnce() {
 	if (w.__ads.stylesInjectedG) return;
 	w.__ads.stylesInjectedG = true;
 	const style = document.createElement("style");
-	style.textContent = `
-    .ads-wrap{position:relative;display:block;margin:0 auto}
-    .ads-slot{position:relative;display:block;width:100%;height:100%;overflow:hidden;border:1px solid rgba(0,0,0,.1);border-radius:12px;background:#fafafa}
-    .ads-slot iframe{display:block;border:0;width:100%;height:100%;overflow:hidden}
-    .ads-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.5rem;font:12px/1.2 system-ui;color:#6b7280;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.03) 0 10px,rgba(0,0,0,.05) 10px 20px)}
-    .ads-dot{width:8px;height:8px;border-radius:9999px;background:#9ca3af;animation:ads-pulse 1.4s ease-in-out infinite}
-    @keyframes ads-pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.3);opacity:1}}
-  `;
+	style.textContent = composeAdsCss({
+		includeIframe: false,
+		includeSideFixed: false,
+		includeHouse: false,
+	});
 	document.head.appendChild(style);
 }
 

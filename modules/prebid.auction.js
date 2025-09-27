@@ -9,6 +9,7 @@ import {
 	ENABLE_GAM,
 	GAM_NETWORK_CALLS,
 } from "virtual:ads-config";
+import { composeAdsCss } from "/modules/ads.styles.js";
 
 const PREBID_SRC_LOCAL = "/prebid/prebid.js";
 const PREBID_SRC_CDN =
@@ -93,16 +94,11 @@ function logEvent(type, payload) {
 function injectStylesOnce() {
 	if (w.__ads.stylesInjected) return;
 	w.__ads.stylesInjected = true;
-	const css = `
-  .ads-wrap{position:relative;display:block;margin:0 auto}
-  .ads-slot{position:relative;display:block;width:100%;height:100%;min-height:50px;
-            overflow:hidden;border:1px solid rgba(0,0,0,.1);border-radius:12px;background:#f3f4f6}
-  .ads-slot iframe{display:block;border:0;width:100%;height:100%;overflow:hidden}
-  .ads-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.5rem;font:12px/1.2 system-ui;color:#6b7280;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.03) 0 10px,rgba(0,0,0,.05) 10px 20px)}
-  .ads-dot{width:8px;height:8px;border-radius:9999px;background:#9ca3af;animation:ads-pulse 1.4s ease-in-out infinite}
-  @keyframes ads-pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.3);opacity:1}}
-  .ads-side-fixed{position:fixed;z-index:30}
-  `;
+	const css = composeAdsCss({
+		includeIframe: true,
+		includeSideFixed: true,
+		includeHouse: false,
+	});
 	const style = document.createElement("style");
 	style.dataset.ads = "styles";
 	style.textContent = css;
