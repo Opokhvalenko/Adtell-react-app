@@ -1,4 +1,3 @@
-
 // modules/google.only.js
 // Чистий GAM з «сірими банерами», коли інвентар порожній або мережеві виклики вимкнені.
 
@@ -41,6 +40,7 @@ function loadScript(src, id) {
 		document.head.appendChild(s);
 	});
 }
+
 function injectStylesOnce() {
 	if (w.__ads.stylesInjectedG) return;
 	w.__ads.stylesInjectedG = true;
@@ -129,7 +129,7 @@ function ensureContainers() {
 		topWrap.appendChild(top);
 		main.parentElement?.insertBefore(topWrap, main);
 	}
-  
+
 	// SIDE
 	let sideWrap = document.querySelector('[data-ads="side-wrap"]');
 	if (!sideWrap) {
@@ -198,6 +198,14 @@ function defineSlots({ top, side }) {
 			}
 		}
 
+		if (side && !slotExists(side.id)) {
+			const s = w.googletag.defineSlot("/1234567/ad-side", SIDE_SIZES, side.id);
+			if (s) {
+				s.addService(pubads);
+				s.setTargeting("pos", "side");
+			}
+		}
+
 		pubads.addEventListener("slotRenderEnded", (ev) => {
 			const id = ev.slot.getSlotElementId();
 			if (ev.isEmpty) {
@@ -222,9 +230,9 @@ function defineSlots({ top, side }) {
 				lineItemId: ev.lineItemId,
 			});
 		});
-    
+
 		w.googletag.enableServices?.();
-    if (top) w.googletag.display(top.id);
+		if (top) w.googletag.display(top.id);
 		if (side) w.googletag.display(side.id);
 	});
 }
@@ -252,4 +260,3 @@ export async function refreshAds() {
 	if (!USE_GAM) return;
 	w.googletag?.cmd.push(() => w.googletag.pubads().refresh());
 }
-
