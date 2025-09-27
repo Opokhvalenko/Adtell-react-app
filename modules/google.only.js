@@ -1,3 +1,4 @@
+
 // modules/google.only.js
 // Чистий GAM з «сірими банерами», коли інвентар порожній або мережеві виклики вимкнені.
 
@@ -39,18 +40,15 @@ function loadScript(src, id) {
 		document.head.appendChild(s);
 	});
 }
-
 function injectStylesOnce() {
 	if (w.__ads.stylesInjectedG) return;
 	w.__ads.stylesInjectedG = true;
 	const style = document.createElement("style");
 	style.textContent = `
     .ads-wrap{position:relative;display:block;margin:0 auto}
-    .ads-slot{position:relative;display:block;width:100%;height:100%;min-height:50px;
-              overflow:hidden;border:1px solid rgba(0,0,0,.1);border-radius:12px;background:#f3f4f6}
-    .ads-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.5rem;
-                     font:12px/1.2 system-ui;color:#6b7280;
-                     background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.03) 0 10px,rgba(0,0,0,.05) 10px 20px)}
+    .ads-slot{position:relative;display:block;width:100%;height:100%;overflow:hidden;border:1px solid rgba(0,0,0,.1);border-radius:12px;background:#fafafa}
+    .ads-slot iframe{display:block;border:0;width:100%;height:100%;overflow:hidden}
+    .ads-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.5rem;font:12px/1.2 system-ui;color:#6b7280;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.03) 0 10px,rgba(0,0,0,.05) 10px 20px)}
     .ads-dot{width:8px;height:8px;border-radius:9999px;background:#9ca3af;animation:ads-pulse 1.4s ease-in-out infinite}
     @keyframes ads-pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.3);opacity:1}}
   `;
@@ -133,7 +131,7 @@ function ensureContainers() {
 		topWrap.appendChild(top);
 		main.parentElement?.insertBefore(topWrap, main);
 	}
-
+  
 	// SIDE
 	let sideWrap = document.querySelector('[data-ads="side-wrap"]');
 	if (!sideWrap) {
@@ -202,14 +200,6 @@ function defineSlots({ top, side }) {
 			}
 		}
 
-		if (side && !slotExists(side.id)) {
-			const s = w.googletag.defineSlot("/1234567/ad-side", SIDE_SIZES, side.id);
-			if (s) {
-				s.addService(pubads);
-				s.setTargeting("pos", "side");
-			}
-		}
-
 		pubads.addEventListener("slotRenderEnded", (ev) => {
 			const id = ev.slot.getSlotElementId();
 			if (ev.isEmpty) {
@@ -234,9 +224,9 @@ function defineSlots({ top, side }) {
 				lineItemId: ev.lineItemId,
 			});
 		});
-
+    
 		w.googletag.enableServices?.();
-		if (top) w.googletag.display(top.id);
+    if (top) w.googletag.display(top.id);
 		if (side) w.googletag.display(side.id);
 	});
 }
@@ -264,3 +254,4 @@ export async function refreshAds() {
 	if (!USE_GAM) return;
 	w.googletag?.cmd.push(() => w.googletag.pubads().refresh());
 }
+

@@ -17,6 +17,7 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
 		resolveId: (id) => (id === "virtual:ads-config" ? id : null),
 		load(id) {
 			if (id !== "virtual:ads-config") return null;
+
 			const enablePrebid = env.VITE_ENABLE_PREBID === "true";
 			const enableGAM = env.VITE_ENABLE_GAM === "true";
 			const debug = env.VITE_ADS_DEBUG === "true";
