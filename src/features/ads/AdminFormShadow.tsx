@@ -7,13 +7,36 @@ export default function AdminFormShadow() {
 	useEffect(() => {
 		(async () => {
 			if (!hostRef.current || !url) return;
+
 			const root = hostRef.current.attachShadow({ mode: "open" });
-			const wrapper = document.createElement("iframe");
-			wrapper.src = `${url}/admin/ads/pages/create-lineitem`;
-			wrapper.width = "100%";
-			wrapper.height = "700";
-			wrapper.style.border = "0";
-			root.appendChild(wrapper);
+
+			const style = document.createElement("style");
+			style.textContent = `
+      :host { all: initial; }
+      * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Open Sans", sans-serif; }
+      .wrap { display:block; }
+    `;
+			root.appendChild(style);
+
+			const html = await fetch(
+				`${url.replace(/\/$/, "")}/admin/ads/pages/create-lineitem`,
+				{ credentials: "include" },
+			).then((r) => r.text());
+
+			const parser = new DOMParser();
+			const doc = parser.parseFromString(html, "text/html");
+			const form = doc.querySelector("form");
+			if (!form) {
+				root.append("Failed to load admin form.");
+				return;
+			}
+
+			form.action = `${url.replace(/\/$/, "")}/admin/ads/lineitems`;
+
+			const wrap = document.createElement("div");
+			wrap.className = "wrap";
+			wrap.appendChild(form);
+			root.appendChild(wrap);
 		})();
 	}, []);
 

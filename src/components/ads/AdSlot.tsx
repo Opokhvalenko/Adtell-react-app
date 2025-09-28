@@ -5,7 +5,7 @@ type Props = {
 	id?: string;
 	className?: string;
 	style?: React.CSSProperties;
-	sizes: `${number}x${number}`[];
+	sizes: string[];
 	type?: string;
 	geo?: string;
 	floorCpm?: number;
@@ -35,12 +35,11 @@ export default function AdSlot({
 				(async () => {
 					const graceMs = 1200;
 					const t = setTimeout(async () => {
-						if (!ref.current) return;
+						const el = ref.current;
+						if (!el) return;
 
-						const hasIframe = !!ref.current.querySelector("iframe");
-						const hasHtml =
-							!!ref.current.innerHTML &&
-							ref.current.innerHTML.trim().length > 0;
+						const hasIframe = !!el.querySelector("iframe");
+						const hasHtml = !!el.innerHTML && el.innerHTML.trim().length > 0;
 						if (hasIframe || hasHtml) return;
 
 						try {
@@ -51,10 +50,12 @@ export default function AdSlot({
 							)) as AdClient;
 
 							const best = sizes[0];
+							if (!/^\d+x\d+$/.test(best)) return;
+
 							const ep = resolveAdserverEndpoint(endpoint);
 
 							const bid = await mod.requestBid({
-								size: best,
+								size: best as `${number}x${number}`,
 								type,
 								geo,
 								uid: window.__ads?.uid || "",
@@ -62,8 +63,8 @@ export default function AdSlot({
 								endpoint: ep,
 							});
 
-							if (bid && ref.current) {
-								mod.renderBidInto(ref.current, bid, { endpoint: ep });
+							if (bid && el) {
+								mod.renderBidInto(el, bid, { endpoint: ep });
 							}
 						} catch {}
 					}, graceMs);
@@ -75,7 +76,7 @@ export default function AdSlot({
 
 		io.observe(ref.current);
 		return () => io.disconnect();
-	}, [endpoint, floorCpm, geo, sizes, type]);
+	}, [sizes, type, geo, floorCpm, endpoint]);
 
 	return <div id={id} ref={ref} className={className} style={style} />;
 }

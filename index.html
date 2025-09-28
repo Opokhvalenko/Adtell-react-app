@@ -13,19 +13,6 @@
         if (isDark) document.documentElement.classList.add("dark");
       })();
     </script>
-    <script>
-      (function () {
-        const LS = "ad_uid";
-        let uid = localStorage.getItem(LS);
-        if (!uid) {
-          uid = Math.random().toString(36).slice(2) + Date.now().toString(36);
-          localStorage.setItem(LS, uid);
-        }
-        window.__ads = Object.assign(window.__ads || {}, {
-          uid,
-        });
-      })();
-    </script>
 
     <link rel="modulepreload" href="/modules/adserver.client.js" />
 
