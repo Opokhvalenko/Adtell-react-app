@@ -1,25 +1,49 @@
-// Віртуальний модуль: сам створює слоти, вантажить Prebid/GAM, запускає аукціон.
-// За замовчуванням рендеримо напряму (без GAM). GAM можна увімкнути через ENV.
+// Prebid + (опційно) GAM. Плейсхолдери лишаються, доки нема реального рендера.
+// Якщо ставок немає — показуємо сірий банер. Якщо GPT не відрендерив — safe fallback.
+
 import {
 	ADS_DEBUG,
 	BIDMATIC_SOURCE,
+	BIDMATIC_SPN,
 	ENABLE_BIDMATIC,
 	ENABLE_GAM,
+	GAM_NETWORK_CALLS,
 } from "virtual:ads-config";
+import { composeAdsCss } from "/modules/ads.styles.js";
 
 const PREBID_SRC_LOCAL = "/prebid/prebid.js";
 const PREBID_SRC_CDN =
 	"https://cdn.jsdelivr.net/npm/prebid.js@10.10.0/dist/prebid.js";
 const GPT_SRC = "https://securepubads.g.doubleclick.net/tag/js/gpt.js";
+const USE_GAM = ENABLE_GAM && !!GAM_NETWORK_CALLS;
 
 const PAGE_GAP = 24;
 const SIDE_GAP_FROM_MAIN = 16;
 const SIDE_WIDTH = 300;
 
+const TOP_SIZES = [
+	[970, 90],
+	[728, 90],
+	[468, 60],
+	[320, 50],
+];
+const SIDE_SIZES = [
+	[300, 600],
+	[300, 250],
+];
+
+const DEFAULT_TOP = [728, 90];
+const DEFAULT_SIDE = [300, 250];
+
+const BIDDER_TIMEOUT = 3000;
+const GPT_SAFE_FALLBACK_DELAY = BIDDER_TIMEOUT + 1200; // якщо GPT "мовчить"
+
 const w = window;
 w.__ads = w.__ads || {};
+w.__adslog = w.__adslog || [];
+w.__ads.rendered = w.__ads.rendered || {}; // { [id]: boolean }
 
-// utils
+/* -------------------------- utils --------------------------- */
 
 function loadScript(src, id) {
 	return new Promise((resolve, reject) => {
@@ -48,26 +72,60 @@ function pickBestSize(containerW, sizes) {
 	return fit ?? sorted[sorted.length - 1];
 }
 
+function setWrapSize(el, [W, H]) {
+	const wrap = el?.parentElement;
+	if (wrap) {
+		wrap.style.width = `${W}px`;
+		wrap.style.height = `${H}px`;
+	}
+	if (el) {
+		el.style.width = `${W}px`;
+		el.style.height = `${H}px`;
+	}
+}
+
+function logEvent(type, payload) {
+	const item = { ts: Date.now(), type, payload };
+	w.__adslog.unshift(item);
+	w.dispatchEvent(new CustomEvent("ads:prebid", { detail: item }));
+	if (ADS_DEBUG) console.log("[ads]", type, payload);
+}
+
 function injectStylesOnce() {
 	if (w.__ads.stylesInjected) return;
 	w.__ads.stylesInjected = true;
-
-	const css = `
-  .ads-wrap{position:relative;display:block;margin:0 auto}
-  .ads-slot{position:relative;display:block;width:100%;height:100%;overflow:hidden;border:1px solid rgba(0,0,0,.1);border-radius:12px;background:#fafafa}
-  .ads-slot iframe{display:block;border:0;width:100%;height:100%;overflow:hidden}
-  .ads-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.5rem;font:12px/1.2 system-ui;color:#6b7280;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.03) 0 10px,rgba(0,0,0,.05) 10px 20px)}
-  .ads-dot{width:8px;height:8px;border-radius:9999px;background:#9ca3af;animation:ads-pulse 1.4s ease-in-out infinite}
-  @keyframes ads-pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.3);opacity:1}}
-  .ads-side-fixed{position:fixed;z-index:30}
-  `;
+	const css = composeAdsCss({
+		includeIframe: true,
+		includeSideFixed: true,
+		includeHouse: false,
+	});
 	const style = document.createElement("style");
 	style.dataset.ads = "styles";
 	style.textContent = css;
 	document.head.appendChild(style);
 }
 
-// containers (auto-inject & layout)
+function ensurePlaceholder(id, text = "waiting…", size) {
+	const el = document.getElementById(id);
+	if (!el) return;
+	let ph = el.querySelector(".ads-placeholder");
+	if (!ph) {
+		ph = document.createElement("div");
+		ph.className = "ads-placeholder";
+		el.appendChild(ph);
+	}
+	ph.innerHTML = `<span class="ads-dot"></span><span>${id}: ${text}</span>`;
+
+	// розмір щоб «сірий банер» був видимий навіть без креативу
+	const dflt = id === "ad-top" ? DEFAULT_TOP : DEFAULT_SIDE;
+	setWrapSize(el, size || dflt);
+}
+
+function removePlaceholder(id) {
+	document.getElementById(id)?.querySelector(".ads-placeholder")?.remove();
+}
+
+/* --------------- containers (auto-inject & layout) ---------- */
 
 function ensureContainers() {
 	injectStylesOnce();
@@ -77,7 +135,7 @@ function ensureContainers() {
 		document.getElementById("root") ||
 		document.body;
 
-	// TOP: вставляємо блок ПЕРЕД main (щоб не перекривати контент)
+	// TOP
 	let topWrap = document.querySelector('[data-ads="top-wrap"]');
 	if (!topWrap) {
 		topWrap = document.createElement("div");
@@ -85,7 +143,6 @@ function ensureContainers() {
 		topWrap.className = "ads-wrap";
 		topWrap.style.margin = `${PAGE_GAP}px auto ${PAGE_GAP / 2}px`;
 		topWrap.style.width = "100%";
-
 		const top = document.createElement("div");
 		top.id = "ad-top";
 		top.className = "ads-slot";
@@ -93,7 +150,7 @@ function ensureContainers() {
 		main.parentElement?.insertBefore(topWrap, main);
 	}
 
-	// SIDE: фіксований праворуч від основної колонки, але з відступами від країв
+	// SIDE
 	let sideWrap = document.querySelector('[data-ads="side-wrap"]');
 	if (!sideWrap) {
 		sideWrap = document.createElement("div");
@@ -101,28 +158,18 @@ function ensureContainers() {
 		sideWrap.className = "ads-wrap ads-side-fixed";
 		sideWrap.style.width = `${SIDE_WIDTH}px`;
 		sideWrap.style.height = "600px";
-
 		const side = document.createElement("div");
 		side.id = "ad-side";
 		side.className = "ads-slot";
 		sideWrap.appendChild(side);
-
 		document.body.appendChild(sideWrap);
 	}
 
-	// Плейсхолдери до рендера
-	for (const id of ["ad-top", "ad-side"]) {
-		const slot = document.getElementById(id);
-		if (slot && !slot.querySelector(".ads-placeholder")) {
-			const ph = document.createElement("div");
-			ph.className = "ads-placeholder";
-			ph.innerHTML = `<span class="ads-dot"></span><span>${id}: waiting for bid…</span>`;
-			slot.appendChild(ph);
-		}
-	}
+	// тримаємо плейсхолдери до реального рендера
+	ensurePlaceholder("ad-top", "waiting for auction…", DEFAULT_TOP);
+	ensurePlaceholder("ad-side", "waiting for auction…", DEFAULT_SIDE);
 
-	// Позиціонування сайдбара поруч із головною колонкою,
-	// але не ближче ніж PAGE_GAP до країв вікна.
+	// позиціюємо сайдбар
 	function positionSide() {
 		const rect = (
 			document.querySelector("main") ||
@@ -133,17 +180,13 @@ function ensureContainers() {
 		const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
 		const topOffset = rect.top + scrollY + PAGE_GAP;
 
-		//  left = правий край main + відступ
 		const desiredLeft = rect.right + SIDE_GAP_FROM_MAIN;
-
-		// межі, щоб не торкатися країв екрана
 		const minLeft = PAGE_GAP;
 		const maxLeft = window.innerWidth - (SIDE_WIDTH + PAGE_GAP);
 
 		sideWrap.style.top = `${topOffset}px`;
 		sideWrap.style.left = `${Math.min(Math.max(desiredLeft, minLeft), maxLeft)}px`;
 	}
-
 	if (!w.__ads.sidePosBound) {
 		w.__ads.sidePosBound = true;
 		window.addEventListener("resize", positionSide);
@@ -151,18 +194,12 @@ function ensureContainers() {
 	}
 	positionSide();
 
-	// Підігнати TOP розмір під ширину контейнера
+	// top sizing
 	function resizeTop() {
-		const sizes = [
-			[970, 90],
-			[728, 90],
-			[468, 60],
-			[320, 50],
-		];
 		const cw = topWrap.getBoundingClientRect().width || window.innerWidth;
-		const [wBest, hBest] = pickBestSize(cw, sizes);
-		topWrap.style.maxWidth = `${wBest}px`;
-		topWrap.style.height = `${hBest}px`;
+		const [W, H] = pickBestSize(cw, TOP_SIZES);
+		topWrap.style.maxWidth = `${W}px`;
+		topWrap.style.height = `${H}px`;
 	}
 	resizeTop();
 	if (!w.__ads.topRO) {
@@ -170,15 +207,11 @@ function ensureContainers() {
 		w.__ads.topRO.observe(topWrap);
 	}
 
-	// SIDE — 300x600 або 300x250
+	// side sizing
 	function resizeSide() {
-		const sizes = [
-			[300, 600],
-			[300, 250],
-		];
-		const [wBest, hBest] = pickBestSize(SIDE_WIDTH, sizes);
-		sideWrap.style.width = `${wBest}px`;
-		sideWrap.style.height = `${hBest}px`;
+		const [W, H] = pickBestSize(SIDE_WIDTH, SIDE_SIZES);
+		sideWrap.style.width = `${W}px`;
+		sideWrap.style.height = `${H}px`;
 	}
 	resizeSide();
 
@@ -188,32 +221,46 @@ function ensureContainers() {
 	};
 }
 
-// singletons
+/* ------------------------- prebid --------------------------- */
 
 async function ensurePrebid() {
 	if (w.pbjs?.libLoaded || w.__ads.pbjsLoading) return;
 	w.__ads.pbjsLoading = true;
 	w.pbjs = w.pbjs || { que: [] };
+
 	try {
 		await loadScript(PREBID_SRC_LOCAL, "pbjs-lib");
 	} catch {
 		await loadScript(PREBID_SRC_CDN, "pbjs-lib");
 	}
-	if (ADS_DEBUG) w.pbjs.que.push(() => w.pbjs.setConfig?.({ debug: true }));
 
-	// SizeConfig для брейкпоінтів
 	w.pbjs.que.push(() => {
-		w.pbjs.setConfig?.({
+		const cfg = {
+			debug: !!ADS_DEBUG,
+			bidderTimeout: BIDDER_TIMEOUT,
+			enableSendAllBids: true,
+			targetingControls: {
+				allowTargetingKeys: [
+					"hb_bidder",
+					"hb_pb",
+					"hb_adid",
+					"hb_size",
+					"hb_format",
+					"hb_source",
+					"hb_uuid",
+				],
+			},
+			userSync: {
+				iframeEnabled: true,
+				filterSettings: { iframe: { bidders: "*", filter: "include" } },
+				syncDelay: 1000,
+			},
+			activityControls: { enabled: false },
 			sizeConfig: [
 				{
 					label: "desktop",
 					mediaQuery: "(min-width: 1024px)",
-					sizesSupported: [
-						[970, 90],
-						[728, 90],
-						[300, 600],
-						[300, 250],
-					],
+					sizesSupported: [...TOP_SIZES, ...SIDE_SIZES],
 				},
 				{
 					label: "tablet",
@@ -233,31 +280,50 @@ async function ensurePrebid() {
 					],
 				},
 			],
-		});
+			schain: {
+				ver: "1.0",
+				complete: 1,
+				nodes: [
+					{ asi: location.hostname || "localhost", sid: "pub-0001", hp: 1 },
+				],
+			},
+			ortb2: {
+				site: {
+					domain: location.hostname || "localhost",
+					page: location.href,
+					ext: {
+						data: { section: location.pathname.replace(/\//g, "_") || "home" },
+					},
+				},
+			},
+		};
+		w.pbjs.setConfig?.(cfg);
 	});
 
-	// На зміну брейкпоінта — легкий refresh
+	// авто-refresh при зміні брейкпоінту
 	if (!w.__ads.bpBound) {
 		w.__ads.bpBound = true;
-		const activeLabel = () =>
+		const active = () =>
 			window.innerWidth >= 1024
 				? "desktop"
 				: window.innerWidth >= 768
 					? "tablet"
 					: "mobile";
-		w.__ads.lastLabel = activeLabel();
+		w.__ads.lastBp = active();
 		window.addEventListener(
 			"resize",
 			debounce(() => {
-				const cur = activeLabel();
-				if (cur !== w.__ads.lastLabel) {
-					w.__ads.lastLabel = cur;
+				const cur = active();
+				if (cur !== w.__ads.lastBp) {
+					w.__ads.lastBp = cur;
 					refreshAds();
 				}
 			}, 250),
 		);
 	}
 }
+
+/* --------------------------- gpt ---------------------------- */
 
 async function ensureGpt() {
 	if (!ENABLE_GAM) return;
@@ -266,133 +332,6 @@ async function ensureGpt() {
 	w.googletag = w.googletag || { cmd: [] };
 	await loadScript(GPT_SRC, "gpt-lib");
 }
-
-//  events
-
-function hookPrebidEvents() {
-	if (w.__ads.eventsHooked) return;
-	w.__ads.eventsHooked = true;
-
-	w.__adslog = w.__adslog || [];
-	const push = (type, payload) => {
-		const item = { ts: Date.now(), type, payload };
-		w.__adslog.push(item);
-		w.dispatchEvent(new CustomEvent("ads:prebid", { detail: item }));
-	};
-	const on = (name) =>
-		w.pbjs.onEvent?.(name, (payload) => {
-			// На успішний рендер прибираємо плейсхолдер
-			if (
-				(name === "adRenderSucceeded" || name === "bidWon") &&
-				payload?.adUnitCode
-			) {
-				const el = document.getElementById(payload.adUnitCode);
-				el?.querySelector(".ads-placeholder")?.remove();
-			}
-			push(name, payload);
-		});
-
-	w.pbjs.que.push(() =>
-		[
-			"auctionInit",
-			"bidRequested",
-			"bidResponse",
-			"noBid",
-			"auctionEnd",
-			"bidWon",
-			"adRenderSucceeded",
-		].forEach(on),
-	);
-}
-
-// config
-
-function makeAdUnits({ top, side }) {
-	const units = [];
-	if (top) {
-		const topSizes = [
-			[970, 90],
-			[728, 90],
-			[468, 60],
-			[320, 50],
-		];
-		units.push({
-			code: top.id,
-			mediaTypes: { banner: { sizes: topSizes } },
-			// bidmatic НЕ додаємо, бо тут немає 300x250
-			bids: biddersForUnit(topSizes, top.id),
-		});
-	}
-	if (side) {
-		const sideSizes = [
-			[300, 600],
-			[300, 250],
-		];
-		units.push({
-			code: side.id,
-			mediaTypes: { banner: { sizes: sideSizes } },
-			// тут є 300x250 → підʼєднається bidmatic
-			bids: biddersForUnit(sideSizes, side.id),
-		});
-	}
-	return units;
-}
-
-// список біддерів для конкретного юніта за його розмірами
-function biddersForUnit(sizes, unitId) {
-	const list = [{ bidder: "adtelligent", params: { aid: 350975 } }];
-
-	// Bidmatic працює з params.source (int). Додаємо його лише коли є 300x250
-	const has300x250 = sizes?.some?.(([w, h]) => w === 300 && h === 250);
-	if (
-		ENABLE_BIDMATIC &&
-		BIDMATIC_SOURCE &&
-		(has300x250 || unitId === "ad-side")
-	) {
-		list.push({
-			bidder: "bidmatic",
-			params: { source: Number(BIDMATIC_SOURCE) },
-		});
-	}
-	return list;
-}
-
-// rendering
-
-function renderDirect(winner) {
-	const el = document.getElementById(winner.adUnitCode);
-	if (!el) return;
-
-	// 1) Контейнер рівно під креатив — жодних скролів
-	const W = Number(winner.width || 0);
-	const H = Number(winner.height || 0);
-	const wrap = el.parentElement;
-	if (wrap) {
-		wrap.style.width = `${W}px`;
-		wrap.style.height = `${H}px`;
-	}
-	el.style.width = `${W}px`;
-	el.style.height = `${H}px`;
-
-	// 2) Прибираємо плейсхолдер і вміст
-	el.querySelector(".ads-placeholder")?.remove();
-	el.innerHTML = "";
-
-	// 3) Створюємо iframe без скролів
-	const ifr = document.createElement("iframe");
-	ifr.setAttribute("scrolling", "no");
-	ifr.setAttribute("marginwidth", "0");
-	ifr.setAttribute("marginheight", "0");
-	ifr.setAttribute("frameborder", "0");
-	ifr.style.cssText =
-		"display:block;border:0;width:100%;height:100%;overflow:hidden";
-	el.appendChild(ifr);
-
-	// 4) Рендеримо переможця
-	w.pbjs.renderAd?.(ifr.contentWindow.document, winner.adId);
-}
-
-//  GPT (optional)
 
 function slotExists(id) {
 	try {
@@ -403,46 +342,184 @@ function slotExists(id) {
 	}
 }
 
-function defineGptSlots({ top, side }) {
+function applyNetworkTargeting() {
 	if (!ENABLE_GAM) return;
+	w.googletag.cmd.push(() => {
+		const pubads = w.googletag.pubads();
+		pubads.setTargeting("site", location.hostname || "localhost");
+		pubads.setTargeting(
+			"section",
+			location.pathname.replace(/\//g, "_") || "home",
+		);
+		pubads.setTargeting("env", import.meta.env.MODE || "dev");
+		pubads.setTargeting("prebid", "1");
+	});
+}
+
+function defineGptSlots({ top, side }) {
+	if (!USE_GAM) return;
+
 	w.googletag.cmd.push(() => {
 		const pubads = w.googletag.pubads();
 		pubads.disableInitialLoad?.();
 		pubads.enableSingleRequest?.();
 		pubads.setCentering?.(true);
-		pubads.collapseEmptyDivs?.();
+		// НЕ колапсимо пусті слоти — щоб плейсхолдер не зникав
+		//pubads.collapseEmptyDivs?.();
 
 		if (top && !slotExists(top.id)) {
-			const s = w.googletag.defineSlot(
-				"/1234567/ad-top",
-				[
-					[970, 90],
-					[728, 90],
-					[468, 60],
-					[320, 50],
-				],
-				top.id,
-			);
-			if (s) s.addService(pubads);
+			const s = w.googletag.defineSlot("/1234567/ad-top", TOP_SIZES, top.id);
+			if (s) {
+				s.addService(pubads);
+				s.setTargeting("pos", "top");
+			}
 		}
 		if (side && !slotExists(side.id)) {
-			const s = w.googletag.defineSlot(
-				"/1234567/ad-side",
-				[
-					[300, 600],
-					[300, 250],
-				],
-				side.id,
-			);
-			if (s) s.addService(pubads);
+			const s = w.googletag.defineSlot("/1234567/ad-side", SIDE_SIZES, side.id);
+			if (s) {
+				s.addService(pubads);
+				s.setTargeting("pos", "side");
+			}
 		}
+
+		pubads.addEventListener("slotRenderEnded", (ev) => {
+			const id = ev.slot.getSlotElementId();
+			if (ev.isEmpty) {
+				// залишаємо/повертаємо сірий банер
+				ensurePlaceholder(
+					id,
+					"GAM empty",
+					id === "ad-top" ? DEFAULT_TOP : DEFAULT_SIDE,
+				);
+				w.__ads.rendered[id] = false;
+			} else {
+				removePlaceholder(id);
+				w.__ads.rendered[id] = true;
+			}
+			if (ADS_DEBUG)
+				console.log("[GAM] slotRenderEnded", {
+					id,
+					isEmpty: ev.isEmpty,
+					size: ev.size,
+					creativeId: ev.creativeId,
+					lineItemId: ev.lineItemId,
+				});
+		});
+
 		w.googletag.enableServices?.();
 		if (top) w.googletag.display(top.id);
 		if (side) w.googletag.display(side.id);
 	});
 }
 
-//  public API
+/* -------------------------- events -------------------------- */
+
+function hookPrebidEvents() {
+	if (w.__ads.eventsHooked) return;
+	w.__ads.eventsHooked = true;
+
+	w.pbjs.que.push(() => {
+		const on = (name) =>
+			w.pbjs.onEvent?.(name, (payload) => logEvent(`hb:${name}`, payload));
+
+		[
+			"auctionInit",
+			"beforeRequestBids",
+			"requestBids",
+			"bidRequested",
+			"bidResponse",
+			"noBid",
+			"bidderDone",
+			"bidderError",
+			"setTargeting",
+			"auctionEnd",
+			"bidWon",
+			"adRenderSucceeded",
+			"adRenderFailed",
+			"bidTimeout",
+		].forEach(on);
+	});
+}
+
+/* -------------------- adUnits & bidders --------------------- */
+
+function makeAdUnits({ top, side }) {
+	const units = [];
+
+	if (top) {
+		units.push({
+			code: top.id,
+			mediaTypes: { banner: { sizes: TOP_SIZES } },
+			schain: {
+				ver: "1.0",
+				complete: 1,
+				nodes: [
+					{ asi: location.hostname || "localhost", sid: "pub-0001", hp: 1 },
+				],
+			},
+			bids: biddersForUnit(TOP_SIZES, top.id),
+		});
+	}
+
+	if (side) {
+		units.push({
+			code: side.id,
+			mediaTypes: { banner: { sizes: SIDE_SIZES } },
+			schain: {
+				ver: "1.0",
+				complete: 1,
+				nodes: [
+					{ asi: location.hostname || "localhost", sid: "pub-0001", hp: 1 },
+				],
+			},
+			bids: biddersForUnit(SIDE_SIZES, side.id),
+		});
+	}
+
+	return units;
+}
+
+function biddersForUnit(sizes, unitId) {
+	const list = [{ bidder: "adtelligent", params: { aid: 350975 } }];
+
+	const has300x250 = sizes?.some?.(([w, h]) => w === 300 && h === 250);
+	if (
+		ENABLE_BIDMATIC &&
+		BIDMATIC_SOURCE &&
+		(has300x250 || unitId === "ad-side")
+	) {
+		const params = { source: Number(BIDMATIC_SOURCE) };
+		if (BIDMATIC_SPN) params.spn = BIDMATIC_SPN;
+		list.push({ bidder: "bidmatic", params });
+	}
+	return list;
+}
+
+/* ------------------------- rendering ------------------------ */
+
+function renderDirect(winner) {
+	const el = document.getElementById(winner.adUnitCode);
+	if (!el) return;
+
+	const W = Number(winner.width || 0);
+	const H = Number(winner.height || 0);
+	setWrapSize(el, [W, H]);
+
+	removePlaceholder(winner.adUnitCode);
+	el.innerHTML = "";
+
+	const ifr = document.createElement("iframe");
+	ifr.setAttribute("scrolling", "no");
+	ifr.setAttribute("frameborder", "0");
+	ifr.style.cssText =
+		"display:block;border:0;width:100%;height:100%;overflow:hidden";
+	el.appendChild(ifr);
+
+	w.pbjs.renderAd?.(ifr.contentWindow.document, winner.adId);
+	w.__ads.rendered[winner.adUnitCode] = true;
+}
+
+/* ------------------------- public API ----------------------- */
 
 export async function initAds() {
 	const slots = ensureContainers();
@@ -451,9 +528,9 @@ export async function initAds() {
 	await ensurePrebid();
 	await ensureGpt();
 
-	w.pbjs.que.push(() => w.pbjs.setConfig?.({ bidderTimeout: 2000 }));
 	hookPrebidEvents();
 
+	applyNetworkTargeting();
 	defineGptSlots(slots);
 
 	await requestAndDisplay();
@@ -463,21 +540,45 @@ export async function requestAndDisplay(adUnits /* optional */) {
 	const slots = ensureContainers();
 	const units = adUnits || makeAdUnits(slots);
 
+	ensurePlaceholder("ad-top", "auction running…", DEFAULT_TOP);
+	ensurePlaceholder("ad-side", "auction running…", DEFAULT_SIDE);
+
 	w.pbjs.que.push(() => {
-		// додаємо adUnits тільки один раз
 		if (!w.__ads.unitsAdded) {
 			w.__ads.unitsAdded = true;
 			w.pbjs.addAdUnits?.(units);
+			logEvent("hb:addAdUnits", units);
 		}
+
 		const codes = units.map((u) => u.code);
 		w.pbjs.requestBids?.({
 			adUnitCodes: codes,
-			timeout: 2000,
+			timeout: BIDDER_TIMEOUT,
 			bidsBackHandler: () => {
 				const winners = w.pbjs.getHighestCpmBids?.(codes) || [];
-				if (ENABLE_GAM && w.googletag?.apiReady) {
+				logEvent("hb:bidsBackHandler", { codes, winners });
+
+				// якщо взагалі немає ставок — лишаємо сірі банери з поясненням
+				if (!winners.length) {
+					ensurePlaceholder("ad-top", "no bids", DEFAULT_TOP);
+					ensurePlaceholder("ad-side", "no bids", DEFAULT_SIDE);
+					return;
+				}
+
+				if (USE_GAM && w.googletag?.apiReady) {
+					// Віддаємо hb_* у GPT і рефрешимо
 					w.pbjs.setTargetingForGPTAsync?.();
 					w.googletag.cmd.push(() => w.googletag.pubads().refresh());
+
+					// safe-fallback: якщо GPT не відрендерив — малюємо напряму
+					setTimeout(() => {
+						winners.forEach((wBid) => {
+							if (!w.__ads.rendered[wBid.adUnitCode]) {
+								// GPT нічого не показав → прямий рендер
+								renderDirect(wBid);
+							}
+						});
+					}, GPT_SAFE_FALLBACK_DELAY);
 				} else {
 					winners.forEach(renderDirect);
 				}
@@ -491,15 +592,31 @@ export async function refreshAds(codes /* optional */) {
 	const units = makeAdUnits(slots);
 	const adUnitCodes = codes || units.map((u) => u.code);
 
+	ensurePlaceholder("ad-top", "refresh…", DEFAULT_TOP);
+	ensurePlaceholder("ad-side", "refresh…", DEFAULT_SIDE);
+
 	w.pbjs.que.push(() => {
 		w.pbjs.requestBids?.({
 			adUnitCodes,
-			timeout: 2000,
+			timeout: BIDDER_TIMEOUT,
 			bidsBackHandler: () => {
 				const winners = w.pbjs.getHighestCpmBids?.(adUnitCodes) || [];
-				if (ENABLE_GAM && w.googletag?.apiReady) {
+				logEvent("hb:bidsBackHandler", { adUnitCodes, winners });
+
+				if (!winners.length) {
+					ensurePlaceholder("ad-top", "no bids", DEFAULT_TOP);
+					ensurePlaceholder("ad-side", "no bids", DEFAULT_SIDE);
+					return;
+				}
+
+				if (USE_GAM && w.googletag?.apiReady) {
 					w.pbjs.setTargetingForGPTAsync?.();
 					w.googletag.cmd.push(() => w.googletag.pubads().refresh());
+					setTimeout(() => {
+						winners.forEach((wBid) => {
+							if (!w.__ads.rendered[wBid.adUnitCode]) renderDirect(wBid);
+						});
+					}, GPT_SAFE_FALLBACK_DELAY);
 				} else {
 					winners.forEach(renderDirect);
 				}

@@ -23,14 +23,17 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
 			const debug = env.VITE_ADS_DEBUG === "true";
 			const enableBidmatic = env.VITE_ENABLE_BIDMATIC === "true";
 			const bidmaticSource = Number(env.VITE_BIDMATIC_SOURCE || 0);
-			const gamNetworkCalls = env.VITE_GAM_NETWORK !== "false";
-
+			const bidmaticSpn = env.VITE_BIDMATIC_SPN
+				? String(env.VITE_BIDMATIC_SPN)
+				: "";
+			const gamNetworkCalls = env.VITE_GAM_NETWORK === "true";
 			return `
         export const ENABLE_PREBID = ${enablePrebid};
-        export const ENABLE_GAM    = ${enableGAM};
-        export const ADS_DEBUG     = ${debug};
+        export const ENABLE_GAM = ${enableGAM};
+        export const ADS_DEBUG = ${debug};
         export const ENABLE_BIDMATIC = ${enableBidmatic};
         export const BIDMATIC_SOURCE = ${bidmaticSource};
+        export const BIDMATIC_SPN = ${JSON.stringify(bidmaticSpn)};
         export const GAM_NETWORK_CALLS = ${gamNetworkCalls};
       `;
 		},
@@ -65,7 +68,6 @@ function adsModulePlugin(env: Record<string, string>): PluginOption {
 
 export default defineConfig(({ mode }): UserConfig => {
 	const env = loadEnv(mode, process.cwd(), "");
-
 	const isDev = mode !== "production";
 	const isAnalyze = env.ANALYZE === "true";
 	const isCI = !!env.CI;
