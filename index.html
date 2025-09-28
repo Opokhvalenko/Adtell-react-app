@@ -1,20 +1,37 @@
 <!doctype html>
 <html lang="en">
   <head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script>
-    (() => {
-      const saved = localStorage.getItem("theme");
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const isDark = saved ? saved === "dark" : prefersDark;
-      if (isDark) document.documentElement.classList.add("dark");
-    })();
-  </script>
-  <link rel="preload" href="/fonts/OpenSans-Medium.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/fonts/OpenSans-Bold.woff2" as="font" type="font/woff2" crossorigin>
-</head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script>
+      (() => {
+        const saved = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const isDark = saved ? saved === "dark" : prefersDark;
+        if (isDark) document.documentElement.classList.add("dark");
+      })();
+    </script>
+    <script>
+      (function () {
+        const LS = "ad_uid";
+        let uid = localStorage.getItem(LS);
+        if (!uid) {
+          uid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+          localStorage.setItem(LS, uid);
+        }
+        window.__ads = Object.assign(window.__ads || {}, {
+          uid,
+        });
+      })();
+    </script>
+
+    <link rel="modulepreload" href="/modules/adserver.client.js" />
+
+    <link rel="preload" href="/fonts/OpenSans-Medium.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/OpenSans-Bold.woff2" as="font" type="font/woff2" crossorigin>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

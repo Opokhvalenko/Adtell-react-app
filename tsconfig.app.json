@@ -20,7 +20,7 @@
 		"noUncheckedSideEffectImports": true,
 		"resolveJsonModule": true,
 		"baseUrl": ".",
-		"paths": { "@/*": ["./src/*"] },
+		"paths": { "@/*": ["./src/*"], "modules/*": ["./public/modules/*"] },
 		"allowJs": true,
 		"checkJs": false
 	},
@@ -28,7 +28,8 @@
 		"src/**/*.ts",
 		"src/**/*.tsx",
 		"src/**/*.d.ts",
-		"modules/**/*.js"
+		"modules/**/*.js",
+		"public/modules/**/*.js"
 	],
 	"exclude": ["node_modules", "dist"]
 }
