@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { resolveAdserverEndpoint } from "@/lib/adserver";
+import type { AdClient } from "@/types/adserver-client";
 
 type Props = {
 	id?: string;
@@ -43,19 +44,23 @@ export default function AdSlot({
 						if (hasIframe || hasHtml) return;
 
 						try {
-							const runtimePath = "/modules/adserver.client.js";
-							type AdClient = typeof import("modules/adserver.client.js");
+							const runtimePath = new URL(
+								"/modules/adserver.client.js",
+								window.location.origin,
+							).href;
+
 							const mod = (await import(
 								/* @vite-ignore */ runtimePath
-							)) as AdClient;
+							)) as unknown as AdClient;
 
 							const best = sizes[0];
 							if (!/^\d+x\d+$/.test(best)) return;
+							const sizeKey = best as `${number}x${number}`;
 
 							const ep = resolveAdserverEndpoint(endpoint);
 
 							const bid = await mod.requestBid({
-								size: best as `${number}x${number}`,
+								size: sizeKey,
 								type,
 								geo,
 								uid: window.__ads?.uid || "",

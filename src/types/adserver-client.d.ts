@@ -1,16 +1,16 @@
-declare module "modules/adserver.client.js" {
-	export type BidResponse = {
-		lineItemId: string;
-		cpm: number;
-		w: number;
-		h: number;
-		adm: string;
-		adomain: string[];
-		ttl: number;
-		cur: string;
-	};
+export type BidResponse = {
+	lineItemId: string;
+	cpm: number;
+	w: number;
+	h: number;
+	adm: string;
+	adomain: string[];
+	ttl: number;
+	cur: string;
+};
 
-	export function requestBid(args: {
+export type AdClient = {
+	requestBid(args: {
 		size: `${number}x${number}`;
 		type?: string;
 		geo?: string;
@@ -19,9 +19,9 @@ declare module "modules/adserver.client.js" {
 		endpoint?: string;
 	}): Promise<BidResponse | null>;
 
-	export function renderBidInto(
+	renderBidInto(
 		el: Element,
 		bid: BidResponse,
 		opts?: { endpoint?: string },
 	): void;
-}
+};

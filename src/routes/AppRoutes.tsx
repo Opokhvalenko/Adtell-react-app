@@ -16,6 +16,7 @@ const NewsModal = lazy(() => import("@/features/news/NewsModal"));
 const LoginForm = lazy(() => import("@/features/auth/LoginForm"));
 const RegisterForm = lazy(() => import("@/features/auth/RegisterForm"));
 const AdsDebugPage = lazy(() => import("@/features/ads/AdsDebugPage"));
+const AdminFormShadow = lazy(() => import("@/features/ads/AdminFormShadow"));
 
 function RequireAuth({ children }: { children: ReactElement }) {
 	const { isLoggedIn } = useAuth();
@@ -71,13 +72,10 @@ const routes = [
 					</RequireAuth>
 				),
 			},
-			// додаємо сторінку дебага лише коли увімкнено через ENV
 			...(ADS_DEBUG
 				? ([
-						{
-							path: "ads-debug",
-							element: <AdsDebugPage />,
-						},
+						{ path: "ads-debug", element: <AdsDebugPage /> },
+						{ path: "ads/admin", element: <AdminFormShadow /> },
 					] as const)
 				: []),
 		],
