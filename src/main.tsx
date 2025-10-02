@@ -2,9 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./tailwind.css";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ensureAdUid } from "@/lib/ads/uid";
 import App from "./App";
 import { queryClient } from "./lib/query";
 import { ErrorBoundary } from "./reporting/ErrorBoundary";
+
+ensureAdUid();
 
 import("virtual:ads-module").then((m) => m.initAds?.()).catch(() => {});
 
