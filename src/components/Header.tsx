@@ -1,6 +1,6 @@
 import { ADS_DEBUG } from "virtual:ads-config";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../store/auth";
+import { useAuth } from "@/store/auth";
 import Loader from "./Loader";
 import ThemeToggle from "./ThemeToggle";
 
@@ -29,16 +29,17 @@ export default function Header() {
 					<Loader label="Loading…" className="p-0 text-sm opacity-70" />
 				) : (
 					<div className="flex items-center gap-2">
-						{/* показуємо перемикач сторінок лише коли дозволено дебаг */}
 						{ADS_DEBUG && (
 							<Link to={adsBtnHref} className="btn-nav">
 								{adsBtnLabel}
 							</Link>
 						)}
-
-						{/* перемикач теми завжди присутній */}
+						{isLoggedIn && (
+							<Link to="/ads/create" className="btn-nav">
+								Create ad
+							</Link>
+						)}
 						<ThemeToggle className="btn-nav" />
-
 						{isLoggedIn ? (
 							<button type="button" onClick={handleLogout} className="btn-nav">
 								Logout

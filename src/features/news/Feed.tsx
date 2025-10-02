@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { FeedItem } from "@/types/feed";
 import { useFeed } from "./useFeed";
 
@@ -17,10 +18,9 @@ export default function Feed() {
 				<ul className="grid gap-6 sm:grid-cols-2">
 					{items.map((it: FeedItem) => (
 						<li key={it.id}>
-							<a
-								href={it.link}
-								target="_blank"
-								rel="noreferrer"
+							<Link
+								to={`/news/${it.id}`}
+								state={{ url: it.link, title: it.title }}
 								className="block rounded-xl border bg-white dark:bg-gray-800 shadow hover:shadow-md transition overflow-hidden"
 								aria-label={`Open "${it.title}"`}
 							>
@@ -28,7 +28,7 @@ export default function Feed() {
 									<h3 className="font-medium line-clamp-2">{it.title}</h3>
 									<div className="mt-1 text-sm text-slate-500">{it.date}</div>
 								</div>
-							</a>
+							</Link>
 						</li>
 					))}
 				</ul>

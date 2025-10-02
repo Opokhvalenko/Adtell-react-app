@@ -11,6 +11,7 @@ import inspect from "vite-plugin-inspect";
 import svgr from "vite-plugin-svgr";
 import virtualBuildInfo from "./build/plugins/virtualBuildInfo";
 
+// ---------- virtual:ads-config ----------
 function adsVirtualConfig(env: Record<string, string>): PluginOption {
 	return {
 		name: "virtual-ads-config",
@@ -40,6 +41,7 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
 	};
 }
 
+// ---------- virtual:ads-module ----------
 function adsModulePlugin(env: Record<string, string>): PluginOption {
 	return {
 		name: "virtual-ads-module",
@@ -72,10 +74,28 @@ export default defineConfig(({ mode }): UserConfig => {
 	const isAnalyze = env.ANALYZE === "true";
 	const isCI = !!env.CI;
 
+	const API_TARGET = env.VITE_API_TARGET || "http://127.0.0.1:3000";
+
 	return {
 		resolve: {
 			alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
 		},
+
+		server: {
+			port: Number(env.VITE_DEV_PORT || 5173),
+			proxy: {
+				"/feed": { target: API_TARGET, changeOrigin: true },
+				"/article": { target: API_TARGET, changeOrigin: true },
+				"/auth": { target: API_TARGET, changeOrigin: true },
+				"/upload": { target: API_TARGET, changeOrigin: true },
+				"/adserver": { target: API_TARGET, changeOrigin: true },
+				"/docs": { target: API_TARGET, changeOrigin: true },
+				"/uploads": { target: API_TARGET, changeOrigin: true },
+				"/create": { target: API_TARGET, changeOrigin: true },
+				"/ads": { target: API_TARGET, changeOrigin: true },
+			},
+		},
+
 		plugins: [
 			svgr(),
 			adsVirtualConfig(env),
@@ -99,6 +119,7 @@ export default defineConfig(({ mode }): UserConfig => {
 					open: !isCI,
 				}),
 		].filter(Boolean) as PluginOption[],
+
 		build: {
 			target: "es2022",
 			sourcemap: false,
@@ -110,6 +131,7 @@ export default defineConfig(({ mode }): UserConfig => {
 				},
 			},
 		},
+
 		define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
 	};
 });
