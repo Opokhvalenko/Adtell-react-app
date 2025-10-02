@@ -4,6 +4,7 @@ import {
 	Navigate,
 	type RouteObject,
 	RouterProvider,
+	useLocation,
 } from "react-router-dom";
 
 import Layout from "@/components/Layout";
@@ -16,15 +17,22 @@ const NewsModal = lazy(() => import("@/features/news/NewsModal"));
 const LoginForm = lazy(() => import("@/features/auth/LoginForm"));
 const RegisterForm = lazy(() => import("@/features/auth/RegisterForm"));
 const AdsDebugPage = lazy(() => import("@/features/ads/AdsDebugPage"));
-const AdminFormShadow = lazy(() => import("@/features/ads/AdminFormShadow"));
+const CreateAdShadow = lazy(() => import("@/features/ads/CreateAdShadow"));
 
 function RequireAuth({ children }: { children: ReactElement }) {
-	const { isLoggedIn } = useAuth();
-	return isLoggedIn ? children : <Navigate to="/login" replace />;
+	const { isLoggedIn, isLoading } = useAuth();
+	const location = useLocation();
+	if (isLoading) return <Loader />;
+	return isLoggedIn ? (
+		children
+	) : (
+		<Navigate to="/login" replace state={{ from: location }} />
+	);
 }
 
 function PublicOnly({ children }: { children: ReactElement }) {
-	const { isLoggedIn } = useAuth();
+	const { isLoggedIn, isLoading } = useAuth();
+	if (isLoading) return <Loader />;
 	return !isLoggedIn ? children : <Navigate to="/" replace />;
 }
 
@@ -48,6 +56,7 @@ const routes = [
 		),
 		children: [
 			{ index: true, element: <Feed /> },
+
 			{
 				path: "login",
 				element: (
@@ -64,6 +73,7 @@ const routes = [
 					</PublicOnly>
 				),
 			},
+
 			{
 				path: "news/:id",
 				element: (
@@ -72,11 +82,19 @@ const routes = [
 					</RequireAuth>
 				),
 			},
+
+			// ads
+			{
+				path: "ads/create",
+				element: (
+					<RequireAuth>
+						<CreateAdShadow />
+					</RequireAuth>
+				),
+			},
+
 			...(ADS_DEBUG
-				? ([
-						{ path: "ads-debug", element: <AdsDebugPage /> },
-						{ path: "ads/admin", element: <AdminFormShadow /> },
-					] as const)
+				? ([{ path: "ads-debug", element: <AdsDebugPage /> }] as const)
 				: []),
 		],
 	},
@@ -88,6 +106,7 @@ const routes = [
 			</RequireAuth>
 		),
 	},
+	{ path: "*", element: <Navigate to="/" replace /> },
 ] satisfies RouteObject[];
 
 const router = createBrowserRouter(routes);

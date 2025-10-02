@@ -26,6 +26,8 @@ type AuthFormProps<T extends FieldValues> = {
 	title: string;
 	defaultValues?: DefaultValues<T>;
 	footer?: React.ReactNode;
+	error?: React.ReactNode;
+	submitting?: boolean;
 };
 
 export default function AuthForm<T extends FieldValues>({
@@ -36,10 +38,18 @@ export default function AuthForm<T extends FieldValues>({
 	title,
 	defaultValues,
 	footer,
+	error,
+	submitting,
 }: AuthFormProps<T>) {
 	return (
 		<div className="max-w-md mx-auto p-6 rounded-2xl border bg-white/80 dark:bg-gray-800/80 shadow">
 			<h2 className="text-2xl font-bold mb-4">{title}</h2>
+
+			{error ? (
+				<div className="mb-4 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 px-3 py-2 text-sm">
+					{error}
+				</div>
+			) : null}
 
 			<Form<T>
 				schema={schema}
@@ -55,12 +65,12 @@ export default function AuthForm<T extends FieldValues>({
 						type={f.type}
 						autoComplete={f.autoComplete}
 						placeholder={f.placeholder}
-						disabled={f.disabled}
+						disabled={submitting || f.disabled}
 					/>
 				))}
 
-				<Button type="submit" className="w-full">
-					{submitLabel}
+				<Button type="submit" className="w-full" disabled={submitting}>
+					{submitting ? "Please wait…" : submitLabel}
 				</Button>
 
 				{footer}
