@@ -6,4 +6,5 @@ declare module "virtual:ads-config" {
 	export const BIDMATIC_SOURCE: number;
 	export const BIDMATIC_SPN: string | "";
 	export const GAM_NETWORK_CALLS: boolean;
+	export const ENABLE_REPORTING: boolean;
 }
