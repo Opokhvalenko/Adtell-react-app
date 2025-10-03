@@ -1,21 +1,20 @@
 declare module "virtual:ads-analytics" {
-	export type AnalyticsContext = Record<string, unknown>;
-
-	export interface InitAnalyticsOptions {
+	export type AnalyticsInitOptions = {
 		enabled?: boolean;
-		context?: AnalyticsContext;
-		flushOnUnload?: boolean;
-	}
-
+		context?: Record<string, unknown>;
+	};
 	export function initAnalytics(
-		options?: InitAnalyticsOptions,
+		options?: AnalyticsInitOptions,
 	): void | Promise<void>;
-
-	export function track(event: string, payload?: Record<string, unknown>): void;
 }
 
 declare module "virtual:ads-module" {
 	export function initAds(): Promise<void> | void;
 	export function requestAndDisplay(adUnits?: unknown): Promise<void> | void;
 	export function refreshAds(codes?: string[]): Promise<void> | void;
+}
+
+declare module "virtual:ads-config" {
+	export const ENABLE_REPORTING: boolean;
+	export const ADS_MODE: "prebid" | "google" | string;
 }

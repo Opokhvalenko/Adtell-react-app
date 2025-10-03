@@ -28,6 +28,7 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
 				? String(env.VITE_BIDMATIC_SPN)
 				: "";
 			const gamNetworkCalls = env.VITE_GAM_NETWORK === "true";
+			const enableReporting = env.VITE_ENABLE_REPORTING === "true";
 			return `
         export const ENABLE_PREBID = ${enablePrebid};
         export const ENABLE_GAM = ${enableGAM};
@@ -36,34 +37,65 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
         export const BIDMATIC_SOURCE = ${bidmaticSource};
         export const BIDMATIC_SPN = ${JSON.stringify(bidmaticSpn)};
         export const GAM_NETWORK_CALLS = ${gamNetworkCalls};
+		export const ENABLE_REPORTING = ${enableReporting};
       `;
 		},
 	};
 }
 
+// ---------- virtual:ads-analytics ----------
+function analyticsModulePlugin(envVars: Record<string, string>): PluginOption {
+	return {
+		name: "virtual-ads-analytics",
+		resolveId: (id) => (id === "virtual:ads-analytics" ? id : null),
+		load(id) {
+			if (id !== "virtual:ads-analytics") return null;
+
+			const enabled =
+				String(envVars.VITE_ENABLE_REPORTING || "false") === "true";
+			if (!enabled)
+				return `export async function initAnalytics(){ /* disabled */ }`;
+
+			const rootDir = process.cwd();
+			const file = path.resolve(rootDir, "modules/analytics.module.js");
+			if (!fs.existsSync(file)) {
+				// даємо читабельну помилку під час білду
+				throw new Error(`[virtual-ads-analytics] File not found: ${file}`);
+			}
+			// делегуємо реальну імплементацію в /modules
+			return `export { initAnalytics } from "/modules/analytics.module.js";`;
+		},
+	};
+}
+
 // ---------- virtual:ads-module ----------
-function adsModulePlugin(env: Record<string, string>): PluginOption {
+function adsModulePlugin(envVars: Record<string, string>): PluginOption {
 	return {
 		name: "virtual-ads-module",
-		resolveId(id) {
-			return id === "virtual:ads-module" ? id : null;
-		},
+		resolveId: (id) => (id === "virtual:ads-module" ? id : null),
 		load(id) {
 			if (id !== "virtual:ads-module") return null;
 
-			const mode = (env.VITE_ADS_MODULE || "").toLowerCase();
-			const root = process.cwd();
+			const mode = String(envVars.VITE_ADS_MODULE || "").toLowerCase();
+			const rootDir = process.cwd();
 
-			const map: Record<string, string> = {
-				prebid: path.resolve(root, "modules/prebid.auction.js"),
-				google: path.resolve(root, "modules/google.only.js"),
+			const moduleMap: Record<string, string> = {
+				prebid: path.resolve(rootDir, "modules/prebid.auction.js"),
+				google: path.resolve(rootDir, "modules/google.only.js"),
 			};
 
-			const file = map[mode];
-			if (!file || !fs.existsSync(file)) {
-				return `export async function initAds(){ /* ads disabled */ }`;
+			const moduleFilePath = moduleMap[mode];
+			if (!moduleFilePath) {
+				return `export async function initAds(){ /* ads disabled: unknown mode "${mode}" */ }`;
 			}
-			return fs.readFileSync(file, "utf8");
+			try {
+				if (!fs.existsSync(moduleFilePath)) {
+					throw new Error(`File not found: ${moduleFilePath}`);
+				}
+				return fs.readFileSync(moduleFilePath, "utf8");
+			} catch (err) {
+				throw new Error(`[virtual-ads-module] ${String(err)}`);
+			}
 		},
 	};
 }
@@ -93,6 +125,7 @@ export default defineConfig(({ mode }): UserConfig => {
 				"/uploads": { target: API_TARGET, changeOrigin: true },
 				"/create": { target: API_TARGET, changeOrigin: true },
 				"/ads": { target: API_TARGET, changeOrigin: true },
+				"/api": { target: API_TARGET, changeOrigin: true },
 			},
 		},
 
@@ -100,6 +133,7 @@ export default defineConfig(({ mode }): UserConfig => {
 			svgr(),
 			adsVirtualConfig(env),
 			adsModulePlugin(env),
+			analyticsModulePlugin(env),
 			react(),
 			checker({ typescript: true }),
 			virtualBuildInfo(),

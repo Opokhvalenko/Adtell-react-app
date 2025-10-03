@@ -9,6 +9,7 @@ import {
 
 import Layout from "@/components/Layout";
 import Loader from "@/components/Loader";
+import StatsPage from "@/features/stats/StatsPage";
 import { useAuth } from "@/store/auth";
 
 const Feed = lazy(() => import("@/features/news/Feed"));
@@ -83,12 +84,20 @@ const routes = [
 				),
 			},
 
-			// ads
 			{
 				path: "ads/create",
 				element: (
 					<RequireAuth>
 						<CreateAdShadow />
+					</RequireAuth>
+				),
+			},
+
+			{
+				path: "stats",
+				element: (
+					<RequireAuth>
+						<StatsPage />
 					</RequireAuth>
 				),
 			},

@@ -1,4 +1,4 @@
-import { ADS_DEBUG } from "virtual:ads-config";
+import { ADS_DEBUG, ENABLE_REPORTING } from "virtual:ads-config";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/store/auth";
 import Loader from "./Loader";
@@ -34,6 +34,13 @@ export default function Header() {
 								{adsBtnLabel}
 							</Link>
 						)}
+
+						{isLoggedIn && ENABLE_REPORTING && (
+							<Link to="/stats" className="btn-nav">
+								Stats
+							</Link>
+						)}
+
 						{isLoggedIn && (
 							<Link to="/ads/create" className="btn-nav">
 								Create ad
