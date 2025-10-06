@@ -5,12 +5,13 @@ import { fileURLToPath, URL } from "node:url";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
-import type { PluginOption, UserConfig } from "vite";
-import { defineConfig, loadEnv } from "vite";
+import type { PluginOption } from "vite";
+import { loadEnv } from "vite";
 import checker from "vite-plugin-checker";
 import compression from "vite-plugin-compression";
 import inspect from "vite-plugin-inspect";
 import svgr from "vite-plugin-svgr";
+import { defineConfig } from "vitest/config"; // ← важливо: з vitest/config
 
 /* ───────────────────────── virtual:ads-config ────────────────────────── */
 function adsVirtualConfig(env: Record<string, string>): PluginOption {
@@ -46,7 +47,7 @@ function analyticsModulePlugin(env: Record<string, string>): PluginOption {
 			if (id !== "virtual:ads-analytics") return null;
 
 			const enabled = String(env.VITE_ENABLE_REPORTING || "false") === "true";
-			if (!enabled) return `export async function initAnalytics() {}`;
+			if (!enabled) return `export async function initAnalytics() {};`;
 			const file = path.resolve(process.cwd(), "modules/analytics.module.js");
 			if (!fs.existsSync(file)) {
 				throw new Error(`[virtual-ads-analytics] File not found: ${file}`);
@@ -119,8 +120,8 @@ function virtualBuildInfo(): PluginOption {
 	};
 }
 
-/* ────────────────────────────── Vite config ───────────────────────────── */
-export default defineConfig(({ mode }): UserConfig => {
+/* ────────────────────────────── Vite + Vitest ────────────────────────── */
+export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), "");
 	const isDev = mode !== "production";
 	const isAnalyze = env.ANALYZE === "true";
@@ -149,39 +150,38 @@ export default defineConfig(({ mode }): UserConfig => {
 				"/api/report": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) =>
-						path.replace(/^\/api\/report/, "/api/analytics/events"),
+					rewrite: (p) => p.replace(/^\/api\/report/, "/api/analytics/events"),
 				},
 				"/analytics": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/analytics/, "/api/analytics"),
+					rewrite: (p) => p.replace(/^\/analytics/, "/api/analytics"),
 				},
 				"/api": { target: API_TARGET, changeOrigin: true },
 				"/feed": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/feed/, "/api/feed"),
+					rewrite: (p) => p.replace(/^\/feed/, "/api/feed"),
 				},
 				"/article": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/article/, "/api/article"),
+					rewrite: (p) => p.replace(/^\/article/, "/api/article"),
 				},
 				"/auth": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/auth/, "/api/auth"),
+					rewrite: (p) => p.replace(/^\/auth/, "/api/auth"),
 				},
 				"/upload": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/upload/, "/api/upload"),
+					rewrite: (p) => p.replace(/^\/upload/, "/api/upload"),
 				},
 				"/adserver": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/adserver/, "/api"),
+					rewrite: (p) => p.replace(/^\/adserver/, "/api"),
 				},
 				"/api/bid": { target: API_TARGET, changeOrigin: true },
 				"/docs": { target: API_TARGET, changeOrigin: true },
@@ -190,12 +190,12 @@ export default defineConfig(({ mode }): UserConfig => {
 				"/create": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/create/, "/api/create"),
+					rewrite: (p) => p.replace(/^\/create/, "/api/create"),
 				},
 				"/ads": {
 					target: API_TARGET,
 					changeOrigin: true,
-					rewrite: (path) => path.replace(/^\/ads/, "/api/ads"),
+					rewrite: (p) => p.replace(/^\/ads/, "/api/ads"),
 				},
 			},
 		},
@@ -250,6 +250,41 @@ export default defineConfig(({ mode }): UserConfig => {
 
 		define: {
 			__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+		},
+
+		// ───────── Vitest ─────────
+		test: {
+			globals: true,
+			environment: "jsdom",
+			setupFiles: ["./src/test/setup.ts"],
+			css: true,
+			mockReset: true,
+			restoreMocks: true,
+			coverage: { reporter: ["text", "html"], reportsDirectory: "coverage" },
+
+			// ⬇⬇⬇ головне — alias для virtual:*
+			alias: {
+				"virtual:ads-config": path.resolve(
+					__dirname,
+					"src/test/mocks/virtual-ads-config.ts",
+				),
+				"virtual:ads-analytics": path.resolve(
+					__dirname,
+					"src/test/mocks/virtual-ads-analytics.ts",
+				),
+				"virtual:ads-module": path.resolve(
+					__dirname,
+					"src/test/mocks/virtual-ads-module.ts",
+				),
+				"virtual:ads-bridge": path.resolve(
+					__dirname,
+					"src/test/mocks/virtual-ads-bridge.ts",
+				),
+				"virtual:build-info": path.resolve(
+					__dirname,
+					"src/test/mocks/virtual-build-info.ts",
+				),
+			},
 		},
 	};
 });
