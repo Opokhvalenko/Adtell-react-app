@@ -6,11 +6,7 @@ type Props = React.InputHTMLAttributes<HTMLInputElement> & {
 	hint?: string;
 };
 
-const base =
-	"w-full rounded-lg px-3 py-2 shadow-sm bg-white dark:bg-gray-800 " +
-	"text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 " +
-	"placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none " +
-	"focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+const base = "w-full input-field";
 
 export default forwardRef<HTMLInputElement, Props>(function Input(
 	{ id, label, error, hint, className, ...props },
@@ -20,11 +16,11 @@ export default forwardRef<HTMLInputElement, Props>(function Input(
 	const hintId = hint ? `${id}-hint` : undefined;
 
 	return (
-		<div>
+		<div className="space-y-2">
 			{label && (
 				<label
 					htmlFor={id}
-					className="block text-sm mb-1 text-gray-700 dark:text-gray-200"
+					className="block text-sm font-semibold text-gray-700 dark:text-gray-200"
 				>
 					{label}
 				</label>
@@ -40,12 +36,19 @@ export default forwardRef<HTMLInputElement, Props>(function Input(
 				{...props}
 			/>
 			{error && (
-				<p id={errId} className="text-sm text-red-500 mt-1" aria-live="polite">
-					{error}
-				</p>
+				<div className="flex items-center gap-2">
+					<span className="text-red-500 text-sm">⚠️</span>
+					<p
+						id={errId}
+						className="text-sm text-red-500 font-medium"
+						aria-live="polite"
+					>
+						{error}
+					</p>
+				</div>
 			)}
 			{!error && hint && (
-				<p id={hintId} className="text-xs text-gray-500 mt-1">
+				<p id={hintId} className="text-xs text-gray-500 dark:text-gray-400">
 					{hint}
 				</p>
 			)}

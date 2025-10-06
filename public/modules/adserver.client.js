@@ -21,7 +21,7 @@ export async function requestBid({
 	endpoint,
 }) {
 	const ep = (endpoint || DEFAULT_ENDPOINT || "").replace(/\/$/, "");
-	const url = new URL(`${ep}/adserver/bid`);
+	const url = new URL(`${ep}/api/bid`);
 	url.searchParams.set("size", size);
 	url.searchParams.set("type", type);
 	if (geo) url.searchParams.set("geo", geo);
@@ -46,7 +46,6 @@ export function renderBidInto(el, bid, { endpoint } = {}) {
 	wrap.innerHTML = bid.adm;
 	root.replaceChildren(wrap);
 
-	// префіксуємо відносні /uploads, якщо бекенд їх так віддав
 	const base = (endpoint || DEFAULT_ENDPOINT || "").replace(/\/$/, "");
 	wrap.querySelectorAll('img[src^="/"]').forEach((img) => {
 		const s = img.getAttribute("src") || "";

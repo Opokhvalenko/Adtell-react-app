@@ -1,72 +1,47 @@
-import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
+import "@testing-library/jest-dom";
 
-// matchMedia
-if (!("matchMedia" in window)) {
-	Object.defineProperty(window, "matchMedia", {
-		writable: true,
-		value: vi.fn().mockImplementation((query: string) => ({
-			matches: false,
-			media: query,
-			onchange: null,
-			addListener: vi.fn(),
-			removeListener: vi.fn(),
-			addEventListener: vi.fn(),
-			removeEventListener: vi.fn(),
-			dispatchEvent: vi.fn(),
-		})),
-	});
-}
+// Mock IntersectionObserver
+global.IntersectionObserver = vi.fn().mockImplementation((_callback) => ({
+	observe: vi.fn(),
+	unobserve: vi.fn(),
+	disconnect: vi.fn(),
+}));
 
-// ResizeObserver
-if (!("ResizeObserver" in window)) {
-	class MockResizeObserver {
-		observe() {}
-		unobserve() {}
-		disconnect() {}
-	}
-	Object.defineProperty(window, "ResizeObserver", {
-		writable: true,
-		value: MockResizeObserver,
-	});
-}
+// Mock window.__ads
+Object.defineProperty(window, "__ads", {
+	value: {
+		mount: vi.fn(),
+		unmount: vi.fn(),
+		uid: "test-uid-123",
+	},
+	writable: true,
+});
 
-declare global {
-	interface Window {
-		pbjs?: unknown;
-		googletag?: unknown;
-	}
-}
+// Mock window.pbjs
+Object.defineProperty(window, "pbjs", {
+	value: {
+		onEvent: vi.fn(),
+		getHighestCpmBids: vi.fn(),
+		setConfig: vi.fn(),
+		addAdUnits: vi.fn(),
+		requestBids: vi.fn(),
+		renderAd: vi.fn(),
+		getBidResponses: vi.fn(),
+		getAuctionData: vi.fn(),
+		registerBidder: vi.fn(),
+	},
+	writable: true,
+});
 
-// Prebid mock
-window.pbjs = window.pbjs ?? {
-	que: [] as Array<() => void>,
-	onEvent: vi.fn(),
-	setConfig: vi.fn(),
-	addAdUnits: vi.fn(),
-	requestBids: vi.fn(),
-	getHighestCpmBids: vi.fn(() => [] as unknown[]),
-	renderAd: vi.fn(),
-	setTargetingForGPTAsync: vi.fn(),
-};
+// Mock fetch
+global.fetch = vi.fn();
 
-// GPT mock
-window.googletag = window.googletag ?? {
-	cmd: [] as Array<() => void>,
-	apiReady: false,
-	pubads: vi.fn(() => ({
-		refresh: vi.fn(),
-		disableInitialLoad: vi.fn(),
-		enableSingleRequest: vi.fn(),
-		setCentering: vi.fn(),
-		collapseEmptyDivs: vi.fn(),
-		addEventListener: vi.fn(),
-		getSlots: vi.fn(() => [] as Array<{ getSlotElementId: () => string }>),
-	})),
-	enableServices: vi.fn(),
-	defineSlot: vi.fn(() => ({
-		addService: vi.fn(),
-		getSlotElementId: vi.fn(() => ""),
-	})),
-	display: vi.fn(),
+// Mock console methods to reduce noise in tests
+global.console = {
+	...console,
+	log: vi.fn(),
+	error: vi.fn(),
+	warn: vi.fn(),
+	info: vi.fn(),
 };

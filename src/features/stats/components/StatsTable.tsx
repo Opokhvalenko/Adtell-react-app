@@ -107,7 +107,7 @@ export function StatsTable({
 													? "descending"
 													: "none"
 										}
-										className="p-2 text-left border-b text-[12px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-900/80 sticky top-0"
+										className="p-2 text-left border-b text-[12px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-100 bg-white/80 dark:bg-gray-800/80 sticky top-0"
 									>
 										<button
 											type="button"
@@ -133,7 +133,7 @@ export function StatsTable({
 
 										{h.column.getCanFilter() && (
 											<input
-												className="mt-1 w-full h-8 rounded-md border px-2 text-xs placeholder:text-gray-400 dark:bg-transparent"
+												className="mt-1 w-full h-8 rounded-md border px-2 text-xs placeholder:text-gray-400 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-300"
 												placeholder="Filter…"
 												aria-label={`Filter ${String(
 													h.column.columnDef.header ?? h.column.id,
@@ -166,7 +166,10 @@ export function StatsTable({
 						</tr>
 					) : table.getRowModel().rows.length === 0 ? (
 						<tr>
-							<td className="p-4" colSpan={columns.length}>
+							<td
+								className="p-4 text-gray-600 dark:text-gray-300"
+								colSpan={columns.length}
+							>
 								No data
 							</td>
 						</tr>

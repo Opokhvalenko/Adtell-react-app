@@ -1,5 +1,3 @@
-// Єдина точка правди для всіх ads-стилів + компоновщик під різні режими
-
 export const ADS_WRAP_CSS =
 	".ads-wrap{position:relative;display:block;margin:0 auto}";
 

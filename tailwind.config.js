@@ -1,13 +1,16 @@
-/** @type {import('tailwindcss').Config} */
+import forms from "@tailwindcss/forms";
+import typography from "@tailwindcss/typography";
+
 export default {
 	darkMode: "class",
-	content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
+	content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ['"Open Sans"', "sans-serif"],
+				sans: ['"Open Sans"', "ui-sans-serif", "system-ui"],
 			},
 		},
 	},
-	plugins: [],
+	// important: "#root",
+	plugins: [forms({ strategy: "class" }), typography],
 };

@@ -17,7 +17,8 @@
 			"!.vite",
 			"!.cache",
 			"!src/tailwind.css",
-			"!public/prebid"
+			"!public/prebid",
+			"!src/index.css"
 		],
 		"ignoreUnknown": false
 	},

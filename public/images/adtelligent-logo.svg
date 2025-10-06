@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <defs>
+    <linearGradient id="adtelligentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#74b9ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0984e3;stop-opacity:1" />
+    </linearGradient>
+    <pattern id="adtelligentPattern" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M0,15 Q15,5 30,15 T60,15" stroke="white" stroke-width="1" fill="none" opacity="0.1"/>
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="60" fill="url(#adtelligentGradient)" rx="8"/>
+  <rect width="200" height="60" fill="url(#adtelligentPattern)" rx="8"/>
+  
+  <!-- Logo text -->
+  <text x="20" y="35" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-shadow="0 2px 4px rgba(0,0,0,0.3)">Adtelligent</text>
+  
+  <!-- Wave elements -->
+  <path d="M140,20 Q150,10 160,20 T180,20" stroke="white" stroke-width="2" fill="none" opacity="0.3"/>
+  <path d="M140,30 Q150,25 160,30 T180,30" stroke="white" stroke-width="1" fill="none" opacity="0.2"/>
+  <path d="M140,40 Q150,35 160,40 T180,40" stroke="white" stroke-width="1.5" fill="none" opacity="0.25"/>
+  
+  <!-- Ocean dots -->
+  <circle cx="150" cy="15" r="1" fill="white" opacity="0.2"/>
+  <circle cx="165" cy="25" r="1.5" fill="white" opacity="0.15"/>
+  <circle cx="175" cy="35" r="1" fill="white" opacity="0.1"/>
+</svg>
+

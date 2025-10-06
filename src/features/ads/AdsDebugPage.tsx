@@ -50,14 +50,14 @@ export default function AdsDebugPage() {
 			<div className="flex gap-2">
 				<button
 					type="button"
-					className="px-3 py-1 rounded bg-black text-white dark:bg-white dark:text-black"
+					className="px-6 py-3 rounded-xl text-base font-semibold border shadow-lg transition-all duration-300 ease-in-out bg-gradient-to-r from-gray-800 to-gray-900 text-white border-gray-700 hover:from-gray-700 hover:to-gray-800 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5 active:scale-95 cursor-pointer select-none backdrop-blur-sm dark:bg-gradient-to-r dark:from-white dark:to-gray-100 dark:text-black dark:border-gray-300 dark:hover:from-gray-100 dark:hover:to-white"
 					onClick={request}
 				>
 					Request & display
 				</button>
 				<button
 					type="button"
-					className="px-3 py-1 rounded border"
+					className="px-6 py-3 rounded-xl text-base font-semibold border shadow-sm transition-all duration-300 ease-in-out bg-white/95 text-gray-800 border-gray-300 hover:bg-white hover:shadow-md hover:scale-105 hover:-translate-y-0.5 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-500 dark:hover:bg-gray-600 dark:hover:shadow-lg cursor-pointer select-none backdrop-blur-sm"
 					onClick={refresh}
 				>
 					Refresh bids

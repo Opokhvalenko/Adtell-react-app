@@ -34,17 +34,93 @@
 @layer base {
 	:root {
 		color-scheme: light;
+		--bg-primary: #f9fafb;
+		--bg-secondary: #ffffff;
+		--text-primary: #111827;
+		--text-secondary: #6b7280;
+		--border-color: #e5e7eb;
 	}
+
 	.dark {
 		color-scheme: dark;
+		--bg-primary: #111827;
+		--bg-secondary: #1f2937;
+		--text-primary: #f9fafb;
+		--text-secondary: #d1d5db;
+		--border-color: #374151;
+	}
+
+	/* Глобальні переходи для плавної зміни тем */
+	* {
+		transition:
+			background-color 0.3s ease,
+			border-color 0.3s ease,
+			color 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	/* Виключаємо переходи для елементів, які не повинні їх мати */
+	*:not(.no-transition) {
+		transition:
+			background-color 0.3s ease,
+			border-color 0.3s ease,
+			color 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	html {
+		@apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+		transition:
+			background-color 0.3s ease,
+			color 0.3s ease;
 	}
 
 	body {
-		@apply min-h-screen font-sans bg-gray-100 text-gray-900 antialiased;
+		@apply min-h-screen font-sans antialiased bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+		transition:
+			background-color 0.3s ease,
+			color 0.3s ease;
 	}
+
+	/* Плавні переходи для всіх елементів */
+	div,
+	span,
+	p,
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	a,
+	button,
+	input,
+	select,
+	textarea {
+		transition:
+			background-color 0.3s ease,
+			border-color 0.3s ease,
+			color 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	/* Забезпечуємо правильні кольори для всіх елементів */
+	/* * {
+		@apply text-gray-900 dark:text-gray-100;
+	} */
+
+	/* Додаткові стилі для темної теми */
+	.dark {
+		@apply bg-gray-900 text-gray-100;
+	}
+
 	.dark body {
 		@apply bg-gray-900 text-gray-100;
 	}
+
+	/* .dark * {
+		@apply text-gray-100;
+	} */
 
 	:is(a, button, [role="button"], input, select, textarea):focus {
 		@apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white;
@@ -58,12 +134,349 @@
 	}
 }
 
+/* Додаткові стилі для виправлення контрастності */
+.dark .bg-gray-600\/90 {
+	background-color: rgb(31 41 55 / 0.9);
+}
+
+.dark .text-white {
+	color: rgb(255 255 255);
+}
+
+/* Виправлення видимості тексту в темній темі */
+.dark .text-gray-800 {
+	color: rgb(243 244 246);
+}
+
+.dark .text-gray-900 {
+	color: rgb(255 255 255);
+}
+
+.dark .text-gray-600 {
+	color: rgb(209 213 219);
+}
+
+.dark .text-gray-700 {
+	color: rgb(209 213 219);
+}
+
+/* Специфічні стилі для елементів */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+	color: rgb(255 255 255);
+}
+
+.dark p,
+.dark span,
+.dark div {
+	color: rgb(243 244 246);
+}
+
+.dark .text-sm {
+	color: rgb(209 213 219);
+}
+
+/* Стилі для кнопок Read more */
+.dark .text-blue-300 {
+	color: rgb(147 197 253);
+}
+
+.dark .bg-blue-900\/30 {
+	background-color: rgb(30 58 138 / 0.3);
+}
+
+.dark .bg-blue-800\/50 {
+	background-color: rgb(30 64 175 / 0.5);
+}
+
+.dark .bg-blue-600\/70 {
+	background-color: rgb(37 99 235 / 0.7);
+}
+
+.dark .bg-blue-200 {
+	background-color: rgb(191 219 254);
+}
+
+.dark .text-blue-800 {
+	color: rgb(30 64 175);
+}
+
+.dark .text-blue-900 {
+	color: rgb(30 58 138) !important;
+}
+
+.dark .bg-blue-100 {
+	background-color: rgb(219 234 254) !important;
+}
+
+/* Додаткові специфічні стилі для кнопок Read more */
+.dark div.flex.items-center.gap-3 {
+	color: rgb(30 58 138) !important;
+	background-color: rgb(219 234 254) !important;
+}
+
+/* Стилі для таблиць в темній темі */
+.dark .bg-gray-800\/80 {
+	background-color: rgb(31 41 55 / 0.8);
+}
+
+.dark .border-gray-600 {
+	border-color: rgb(75 85 99);
+}
+
+.dark .placeholder-gray-300::placeholder {
+	color: rgb(209 213 219);
+}
+
+.dark .text-gray-200 {
+	color: rgb(229 231 235);
+}
+
+.dark .text-blue-300 {
+	color: rgb(147 197 253);
+}
+
+.dark .text-green-300 {
+	color: rgb(134 239 172);
+}
+
+.dark .text-purple-300 {
+	color: rgb(196 181 253);
+}
+
+/* Додаткові стилі для навігації в темній темі */
+.dark .bg-gray-700\/90 {
+	background-color: rgb(55 65 81 / 0.9);
+}
+
+.dark .bg-gray-800 {
+	background-color: rgb(31 41 55);
+}
+
+.dark .text-gray-200 {
+	color: rgb(229 231 235);
+}
+
+.dark .bg-green-900\/30 {
+	background-color: rgb(20 83 45 / 0.3);
+}
+
+/* Додаткові стилі для навігаційних кнопок */
+.dark .bg-gray-700\/90 {
+	background-color: rgb(55 65 81 / 0.9) !important;
+}
+
+.dark .text-gray-100 {
+	color: rgb(243 244 246) !important;
+}
+
+/* Стилі для кнопок в темній темі */
+.dark button {
+	color: rgb(243 244 246);
+}
+
+.dark button:not(.bg-gradient-to-r) {
+	background-color: rgb(55 65 81 / 0.9);
+	color: rgb(243 244 246);
+}
+
+/* Стилі для лінків в темній темі */
+.dark a {
+	color: rgb(243 244 246);
+}
+
+.dark a:hover {
+	color: rgb(147 197 253);
+}
+
+/* Загальні стилі для тексту в темній темі */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+	color: rgb(255 255 255) !important;
+}
+
+.dark p,
+.dark span,
+.dark div {
+	color: rgb(243 244 246) !important;
+}
+
+.dark .text-sm {
+	color: rgb(209 213 219) !important;
+}
+
+.dark .text-xs {
+	color: rgb(209 213 219) !important;
+}
+
+/* Стилі для заголовків секцій */
+.dark .text-lg {
+	color: rgb(255 255 255) !important;
+}
+
+.dark .text-xl {
+	color: rgb(255 255 255) !important;
+}
+
+.dark .text-2xl {
+	color: rgb(255 255 255) !important;
+}
+
+.dark .text-3xl {
+	color: rgb(255 255 255) !important;
+}
+
+.dark .text-4xl {
+	color: rgb(255 255 255) !important;
+}
+
+/* Стилі для input полів в темній темі */
+.dark .input-field {
+	background-color: rgb(55 65 81);
+	color: rgb(255 255 255);
+	border-color: rgb(75 85 99);
+}
+
+.dark .input-field::placeholder {
+	color: rgb(156 163 175);
+}
+
+.dark .input-field:focus {
+	background-color: rgb(55 65 81);
+	color: rgb(255 255 255);
+	border-color: rgb(59 130 246);
+}
+
+/* Фінальні стилі для темної теми - без конфліктів */
+.dark .text-gray-100 {
+	color: rgb(243 244 246) !important;
+}
+
+.dark .bg-gray-700 {
+	background-color: rgb(55 65 81) !important;
+}
+
+/* Агресивні стилі для забезпечення контрасту */
+.dark * {
+	color: rgb(243 244 246) !important;
+}
+
+.dark button:not(.bg-gradient-to-r) {
+	background-color: rgb(55 65 81) !important;
+	color: rgb(243 244 246) !important;
+}
+
+.dark input {
+	background-color: rgb(55 65 81) !important;
+	color: rgb(255 255 255) !important;
+	border-color: rgb(75 85 99) !important;
+}
+
+.dark input::placeholder {
+	color: rgb(156 163 175) !important;
+}
+
+/* Специфічні стилі для навігації */
+.dark header button {
+	background-color: rgb(55 65 81) !important;
+	color: rgb(243 244 246) !important;
+}
+
+.dark header a {
+	color: rgb(243 244 246) !important;
+}
+
+/* Стилі для таблиць */
+.dark table th {
+	background-color: rgb(31 41 55) !important;
+	color: rgb(243 244 246) !important;
+}
+
+.dark table td {
+	color: rgb(243 244 246) !important;
+}
+
+/* Стилі для карток */
+.dark .bg-white\/95 {
+	background-color: rgb(31 41 55) !important;
+}
+
+.dark .bg-white\/90 {
+	background-color: rgb(31 41 55) !important;
+}
+
+/* Найбільш агресивні стилі для всіх елементів */
+html.dark * {
+	color: rgb(243 244 246) !important;
+}
+
+html.dark button {
+	background-color: rgb(55 65 81) !important;
+	color: rgb(243 244 246) !important;
+}
+
+html.dark input {
+	background-color: rgb(55 65 81) !important;
+	color: rgb(255 255 255) !important;
+	border-color: rgb(75 85 99) !important;
+}
+
+html.dark a {
+	color: rgb(243 244 246) !important;
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+	color: rgb(255 255 255) !important;
+}
+
+html.dark p,
+html.dark span,
+html.dark div {
+	color: rgb(243 244 246) !important;
+}
+
+/* Додаткові темні стилі */
+.dark .bg-white\/95 {
+	background-color: rgb(17 24 39 / 0.95);
+}
+
+.dark .bg-white\/90 {
+	background-color: rgb(17 24 39 / 0.9);
+}
+
+.dark .border-white\/20 {
+	border-color: rgb(55 65 81 / 0.4);
+}
+
+/* Footer стилі для темної теми */
+.dark .bg-gradient-to-br.from-slate-100.via-emerald-50.to-cyan-50 {
+	background: linear-gradient(
+		to bottom right,
+		rgb(17 24 39),
+		rgb(17 24 39),
+		rgb(17 24 39)
+	);
+}
+
 @layer components {
 	.btn-nav {
 		@apply inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium
-           border shadow-sm transition-colors
-           bg-white/80 text-gray-900 border-gray-300 hover:bg-white
-           dark:bg-white/10 dark:text-gray-100 dark:border-white/20 dark:hover:bg-white/15;
+           border shadow-sm transition-all duration-200
+           bg-white/90 text-gray-900 border-gray-300 hover:bg-white hover:shadow-md
+           dark:bg-gray-800/90 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700;
 	}
 	.btn-nav:active {
 		@apply translate-y-px;
@@ -71,8 +484,59 @@
 
 	.btn-primary {
 		@apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium
-           text-white bg-blue-600 hover:bg-blue-500
+           text-white bg-blue-600 hover:bg-blue-500 shadow-sm hover:shadow-md
            focus-visible:ring-2 focus-visible:ring-blue-500
-           focus-visible:ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+           focus-visible:ring-offset-2 ring-offset-white dark:ring-offset-gray-900
+           transition-all duration-200;
+	}
+
+	/* Покращені стилі для карток */
+	.card {
+		@apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+               rounded-lg shadow-sm hover:shadow-md transition-all duration-200;
+	}
+
+	/* Стилі для тексту */
+	.text-primary {
+		@apply text-gray-900 dark:text-white;
+	}
+
+	.text-secondary {
+		@apply text-gray-600 dark:text-gray-200;
+	}
+
+	.text-muted {
+		@apply text-gray-500 dark:text-gray-300;
+	}
+
+	/* Стилі для фонів */
+	.bg-primary {
+		@apply bg-white dark:bg-gray-900;
+	}
+
+	.bg-secondary {
+		@apply bg-gray-50 dark:bg-gray-800;
+	}
+
+	/* Стилі для границь */
+	.border-primary {
+		@apply border-gray-200 dark:border-gray-700;
+	}
+
+	.border-secondary {
+		@apply border-gray-300 dark:border-gray-600;
+	}
+
+	/* Стилі для input полів */
+	.input-field {
+		@apply px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600
+               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+               placeholder-gray-500 dark:placeholder-gray-400
+               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+               transition-all duration-200;
+	}
+
+	.input-field:focus {
+		@apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
 	}
 }

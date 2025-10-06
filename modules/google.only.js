@@ -1,6 +1,3 @@
-// modules/google.only.js
-// Чистий GAM з «сірими банерами», коли інвентар порожній або мережеві виклики вимкнені.
-
 import { ENABLE_GAM, GAM_NETWORK_CALLS } from "virtual:ads-config";
 import { composeAdsCss } from "/modules/ads.styles.js";
 
@@ -17,7 +14,6 @@ const SIDE_SIZES = [
 	[300, 600],
 	[300, 250],
 ];
-
 const DEFAULT_TOP = [728, 90];
 const DEFAULT_SIDE = [300, 250];
 
@@ -25,8 +21,6 @@ const w = window;
 w.__ads = w.__ads || {};
 w.__adslog = w.__adslog || [];
 w.__ads.rendered = w.__ads.rendered || {};
-
-/* -------------------------- utils --------------------------- */
 
 function loadScript(src, id) {
 	return new Promise((resolve, reject) => {
@@ -45,14 +39,9 @@ function injectStylesOnce() {
 	if (w.__ads.stylesInjectedG) return;
 	w.__ads.stylesInjectedG = true;
 	const style = document.createElement("style");
-	style.textContent = composeAdsCss({
-		includeIframe: false,
-		includeSideFixed: false,
-		includeHouse: false,
-	});
+	style.textContent = composeAdsCss({ includeIframe: false });
 	document.head.appendChild(style);
 }
-
 function setWrapSize(el, [W, H]) {
 	const wrap = el?.parentElement;
 	if (wrap) {
@@ -64,7 +53,6 @@ function setWrapSize(el, [W, H]) {
 		el.style.height = `${H}px`;
 	}
 }
-
 function ensurePlaceholder(id, text, size) {
 	const el = document.getElementById(id);
 	if (!el) return;
@@ -77,15 +65,12 @@ function ensurePlaceholder(id, text, size) {
 	ph.innerHTML = `<span class="ads-dot"></span><span>${id}: ${text}</span>`;
 	setWrapSize(el, size || (id === "ad-top" ? DEFAULT_TOP : DEFAULT_SIDE));
 }
-
 function pushLog(type, payload) {
 	const item = { ts: Date.now(), type, payload };
 	w.__adslog.unshift(item);
 	w.dispatchEvent(new CustomEvent("ads:gpt", { detail: item }));
-	// eslint-disable-next-line no-console
 	console.log("[GAM]", type, payload);
 }
-
 function emitEmpty(id) {
 	ensurePlaceholder(
 		id,
@@ -107,51 +92,15 @@ function emitEmpty(id) {
 	w.dispatchEvent(new CustomEvent("ads:gpt", { detail: item }));
 }
 
-/* --------------------- containers & GPT --------------------- */
-
 function ensureContainers() {
 	injectStylesOnce();
-
-	const main =
-		document.querySelector("main") ||
-		document.getElementById("root") ||
-		document.body;
-
-	// TOP
-	let topWrap = document.querySelector('[data-ads="top-wrap"]');
-	if (!topWrap) {
-		topWrap = document.createElement("div");
-		topWrap.dataset.ads = "top-wrap";
-		topWrap.className = "ads-wrap";
-		const top = document.createElement("div");
-		top.id = "ad-top";
-		top.className = "ads-slot";
-		topWrap.appendChild(top);
-		main.parentElement?.insertBefore(topWrap, main);
-	}
-
-	// SIDE
-	let sideWrap = document.querySelector('[data-ads="side-wrap"]');
-	if (!sideWrap) {
-		sideWrap = document.createElement("div");
-		sideWrap.dataset.ads = "side-wrap";
-		sideWrap.className = "ads-wrap";
-		sideWrap.style.width = "300px";
-		sideWrap.style.height = "600px";
-		const side = document.createElement("div");
-		side.id = "ad-side";
-		side.className = "ads-slot";
-		sideWrap.appendChild(side);
-		document.body.appendChild(sideWrap);
-	}
-
-	// початкові плейсхолдери
-	ensurePlaceholder("ad-top", "waiting for GAM…", DEFAULT_TOP);
-	ensurePlaceholder("ad-side", "waiting for GAM…", DEFAULT_SIDE);
-
+	const top = document.getElementById("ad-top");
+	const side = document.getElementById("ad-side");
+	const beautiful = document.getElementById("ad-beautiful");
 	return {
-		top: document.getElementById("ad-top"),
-		side: document.getElementById("ad-side"),
+		top: top ? { id: "ad-top", element: top } : null,
+		side: side ? { id: "ad-side", element: side } : null,
+		beautiful: beautiful ? { id: "ad-beautiful", element: beautiful } : null,
 	};
 }
 
@@ -165,24 +114,22 @@ async function ensureGpt() {
 
 function slotExists(id) {
 	try {
-		const slots = w.googletag?.pubads?.().getSlots?.() || [];
-		return slots.some((s) => s.getSlotElementId?.() === id);
+		return (w.googletag?.pubads?.().getSlots?.() || []).some(
+			(s) => s.getSlotElementId?.() === id,
+		);
 	} catch {
 		return false;
 	}
 }
 
-function defineSlots({ top, side }) {
+function defineSlots({ top, side, beautiful }) {
 	if (!USE_GAM) return;
 
 	w.googletag.cmd.push(() => {
 		const pubads = w.googletag.pubads();
 		pubads.enableSingleRequest?.();
 		pubads.setCentering?.(true);
-		// НЕ колапсимо пусті слоти — щоб плейсхолдер не зникав
-		// pubads.collapseEmptyDivs?.();
 
-		// простий сітьовий таргетинг
 		pubads.setTargeting("site", location.hostname || "localhost");
 		pubads.setTargeting(
 			"section",
@@ -197,12 +144,25 @@ function defineSlots({ top, side }) {
 				s.setTargeting("pos", "top");
 			}
 		}
-
 		if (side && !slotExists(side.id)) {
 			const s = w.googletag.defineSlot("/1234567/ad-side", SIDE_SIZES, side.id);
 			if (s) {
 				s.addService(pubads);
 				s.setTargeting("pos", "side");
+			}
+		}
+		if (beautiful && !slotExists(beautiful.id)) {
+			const s = w.googletag.defineSlot(
+				"/1234567/ad-beautiful",
+				[
+					[300, 250],
+					[728, 90],
+				],
+				beautiful.id,
+			);
+			if (s) {
+				s.addService(pubads);
+				s.setTargeting("pos", "beautiful");
 			}
 		}
 
@@ -234,25 +194,20 @@ function defineSlots({ top, side }) {
 		w.googletag.enableServices?.();
 		if (top) w.googletag.display(top.id);
 		if (side) w.googletag.display(side.id);
+		if (beautiful) w.googletag.display(beautiful.id);
 	});
 }
 
-/* --------------------------- API ---------------------------- */
-
 export async function initAds() {
 	const slots = ensureContainers();
-	if (!slots.top && !slots.side) return;
-
+	if (!slots.top && !slots.side && !slots.beautiful) return;
 	await ensureGpt();
-
 	if (!USE_GAM) {
-		// локальний режим без мережі: емітуємо "порожні" рендери і лишаємо плейсхолдери
-		for (const id of ["ad-top", "ad-side"]) {
-			emitEmpty(id);
+		for (const id of ["ad-top", "ad-side", "ad-beautiful"]) {
+			if (document.getElementById(id)) emitEmpty(id);
 		}
 		return;
 	}
-
 	defineSlots(slots);
 }
 
@@ -260,3 +215,5 @@ export async function refreshAds() {
 	if (!USE_GAM) return;
 	w.googletag?.cmd.push(() => w.googletag.pubads().refresh());
 }
+
+export async function requestAndDisplay() {}

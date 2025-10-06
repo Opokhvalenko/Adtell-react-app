@@ -89,11 +89,7 @@ export default function Modal({
 											type="button"
 											ref={closeBtnRef}
 											onClick={onClose}
-											className="inline-flex items-center justify-center rounded-md
-                                 border border-gray-300 bg-white px-3 py-1 text-sm text-gray-800 hover:bg-gray-100
-                                 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600
-                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                 focus:ring-offset-white dark:focus:ring-offset-gray-800"
+											className="px-6 py-3 rounded-xl text-base font-semibold border shadow-sm transition-all duration-300 ease-in-out bg-white/95 text-gray-800 border-gray-300 hover:bg-white hover:shadow-md hover:scale-105 hover:-translate-y-0.5 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-500 dark:hover:bg-gray-600 dark:hover:shadow-lg cursor-pointer select-none backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800"
 											aria-label="Close dialog"
 										>
 											Close
