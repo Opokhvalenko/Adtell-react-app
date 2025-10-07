@@ -30,8 +30,9 @@
 		"allowJs": true,
 		"checkJs": false,
 
-		"types": ["vite/client", "react", "react-dom"]
+		"types": ["vite/client", "react", "react-dom"],
+		"typeRoots": ["./node_modules/@types", "./src"]
 	},
-	"include": ["src", "modules", "public/modules"],
+	"include": ["src", "src/vite-env.d.ts", "modules", "public/modules"],
 	"exclude": ["node_modules", "dist"]
 }

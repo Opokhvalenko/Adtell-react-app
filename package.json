@@ -7,6 +7,7 @@
 		"tailwind:init": "tailwindcss init -y",
 		"tw:dev": "tailwindcss -c tailwind.config.js -i ./src/index.css -o ./src/tailwind.css --watch",
 		"tw:build": "tailwindcss -c tailwind.config.js -i ./src/index.css -o ./src/tailwind.css --minify",
+		"tw:embed": "tailwindcss -c tailwind.config.js -i ./src/ssr/embed.css -o ./public/assets/tw-embed.css --minify",
 		"dev": "vite",
 		"build": "npm run tw:build && vite build",
 		"preview": "vite preview",
@@ -40,6 +41,7 @@
 		"react-hook-form": "^7.62.0",
 		"react-router-dom": "^7.9.1",
 		"recharts": "^3.2.1",
+		"tailwind-merge": "^3.3.1",
 		"use-sync-external-store": "^1.5.0",
 		"zod": "^4.1.8",
 		"zustand": "^5.0.8"

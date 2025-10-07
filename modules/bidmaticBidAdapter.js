@@ -39,7 +39,6 @@
 		supportedMediaTypes: ["banner"],
 
 		isBidRequestValid(bid) {
-			// очікуємо params.source (число) але не блокуємо у деві
 			return !!bid && !!bid.mediaTypes?.banner && (bid.params?.source || true);
 		},
 
@@ -48,8 +47,6 @@
 				const size = bid.mediaTypes?.banner?.sizes?.[0] ||
 					bid.sizes?.[0] || [300, 250];
 				const [width, height] = size;
-
-				// підготуємо офлайновий варіант (на випадок 404/нема бекенду)
 				const offline = genCreative(
 					bid.adUnitCode || bid.code,
 					width,
@@ -65,7 +62,7 @@
 					bidId: bid.bidId,
 					auctionId: bidderRequest?.auctionId,
 					adUnitCode: bid.adUnitCode || bid.code,
-					offline, // бек може проігнорувати
+					offline,
 				});
 
 				return {

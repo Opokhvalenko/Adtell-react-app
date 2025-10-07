@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 interface AuctionEvent {
 	ts: number;
 	type: string;
-	// payload може відрізнятися залежно від події
 	payload: unknown;
 }
 
@@ -25,7 +24,6 @@ export default function AuctionStats() {
 			const detail = event.detail;
 			setEvents((prev) => [detail, ...prev].slice(0, 100));
 
-			// bidResponse / hb:bidResponse
 			if (detail.type === "bidResponse" || detail.type === "hb:bidResponse") {
 				const pl = detail.payload as Record<string, unknown>;
 				const adUnit = String(pl?.adUnitCode ?? "unknown");
@@ -63,7 +61,6 @@ export default function AuctionStats() {
 				});
 			}
 
-			// bidWon / hb:bidWon
 			if (detail.type === "bidWon" || detail.type === "hb:bidWon") {
 				const pl = detail.payload as Record<string, unknown>;
 				const adUnit = String(pl?.adUnitCode ?? "unknown");

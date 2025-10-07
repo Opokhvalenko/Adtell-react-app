@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import type { FeedItem } from "@/types/feed";
 import { useFeed } from "./useFeed";
-
 export default function Feed() {
 	const { items, isLoading, isError } = useFeed();
 
@@ -87,7 +86,7 @@ export default function Feed() {
 					{items.map((it: FeedItem, index: number) => (
 						<article
 							key={it.id}
-							className={`border border-white/20 dark:border-gray-600/40 rounded-3xl shadow-2xl hover:shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/95 dark:bg-gray-700/95 hover:scale-105 hover:-translate-y-1 cursor-pointer overflow-hidden slide-up group hover:shadow-2xl hover:scale-105 transition-all duration-300`}
+							className="border border-white/20 dark:border-gray-600/40 rounded-3xl shadow-xl backdrop-blur-sm bg-white/95 dark:bg-gray-700/95 cursor-pointer overflow-hidden slide-up group transition-[transform,box-shadow] duration-300 hover:shadow-2xl hover:scale-105 hover:-translate-y-1"
 							style={{ animationDelay: `${index * 100}ms` }}
 						>
 							<Link

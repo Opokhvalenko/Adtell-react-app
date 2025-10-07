@@ -27,7 +27,7 @@ export const ADS_HOUSE_CSS = `
 `.trim();
 
 /**
- * Склеює CSS під конкретний модуль.
+ * CSS під конкретний модуль.
  * @param {{includeIframe?: boolean, includeSideFixed?: boolean, includeHouse?: boolean}} opts
  */
 export function composeAdsCss(opts = {}) {

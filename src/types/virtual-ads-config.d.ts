@@ -12,4 +12,7 @@ declare module "virtual:ads-config" {
 	export const ADTELLIGENT_AID: number;
 
 	export const ENABLE_REPORTING: boolean;
+	export const REPORTING_URL: string;
+	export const REPORTING_BATCH: number;
+	export const REPORTING_INTERVAL: number;
 }

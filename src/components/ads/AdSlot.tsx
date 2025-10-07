@@ -12,7 +12,7 @@ declare global {
 }
 
 type AdsSize = `${number}x${number}`;
-type Placement = "inline" | "banner" | "sidebar-right" | "sidebar-left";
+type Placement = "inline" | "banner" | "sidebar-right";
 
 type Props = {
 	id?: string;
@@ -76,7 +76,9 @@ function renderFallbackAd(element: HTMLElement, id: string) {
 function safeUnmount(domId: string) {
 	try {
 		getAdsModule()?.unmount?.(domId);
-	} catch {}
+	} catch {
+		// ignore
+	}
 	document.getElementById(domId)?.replaceChildren();
 }
 
@@ -108,8 +110,6 @@ export default function AdSlot({
 
 	const placementCls = useMemo(() => {
 		switch (placement) {
-			case "sidebar-left":
-				return "hidden xl:flex xl:sticky xl:top-24 xl:self-start xl:justify-end xl:mr-4";
 			case "sidebar-right":
 				return "hidden xl:flex xl:sticky xl:top-24 xl:self-start xl:justify-start xl:ml-4";
 			case "banner":
@@ -169,7 +169,9 @@ export default function AdSlot({
 							endpoint: ep,
 						});
 						if (bid) mod.renderBidInto(el, bid, { endpoint: ep });
-					} catch {}
+					} catch {
+						// ignore
+					}
 				}
 			}, fallbackMs) as unknown as number;
 		};
@@ -199,7 +201,7 @@ export default function AdSlot({
 	return (
 		<section
 			className={cn(
-				"relative flex items-center justify-center",
+				"relative inline-flex items-center justify-center",
 				placementCls,
 				className,
 			)}
@@ -217,6 +219,7 @@ export default function AdSlot({
 				)}
 				style={{ width: first.w, height: first.h, minHeight: first.h }}
 			>
+				{/* loader */}
 				<div className="text-gray-400 dark:text-gray-500 text-sm flex flex-col items-center justify-center">
 					<div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
 					<div className="font-medium text-gray-600 dark:text-gray-300">

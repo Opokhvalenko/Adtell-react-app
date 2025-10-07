@@ -270,7 +270,6 @@ async function ensurePrebid() {
 			await loadScript(PREBID_SRC_CDN, "pbjs-lib");
 		}
 
-		// дочекатись виконання setConfig в que
 		await new Promise((resolve) => {
 			w.pbjs.que.push(() => {
 				if (!w.__ads.pbjsConfigured) {
@@ -355,7 +354,6 @@ async function ensurePrebid() {
 							},
 						},
 					});
-					// додатковий конфіг для Adtelligent
 					w.pbjs.setConfig?.({ adtelligent: { chunkSize: 1 } });
 					w.__ads.pbjsConfigured = true;
 				}
@@ -363,10 +361,8 @@ async function ensurePrebid() {
 			});
 		});
 
-		// реєстрація адаптерів
 		await registerAdaptersOnce();
 
-		// авто-refresh при зміні брейкпоінту
 		if (!w.__ads.bpBound) {
 			w.__ads.bpBound = true;
 			const active = () =>

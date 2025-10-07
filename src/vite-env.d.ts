@@ -1,2 +1,3 @@
 /// <reference types="vite/client" />
-/// <reference types="vitest" />
+/// <reference path="./global.d.ts" />
+/// <reference path="./virtual-modules.d.ts" />

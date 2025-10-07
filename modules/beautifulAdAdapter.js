@@ -1,6 +1,4 @@
-// adapters/beautifulAdAdapter.js
 // House-bidder без мережі: формує ставку локально через pbjs.addBidResponse().
-// ВАЖЛИВО: реєстрацію робимо ЗОВНІ (у prebid.auction.js) ПІСЛЯ завантаження Prebid.
 
 (() => {
 	const CODE = "beautifulAd";

@@ -31,7 +31,7 @@ export default function Header() {
 			: "bg-white/90 text-gray-800 border-gray-200 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-cyan-50 hover:text-emerald-700 hover:border-emerald-300 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5 dark:bg-gray-700/90 dark:text-gray-100 dark:border-gray-500 dark:hover:bg-gradient-to-r dark:hover:from-emerald-800/30 dark:hover:to-cyan-800/30 dark:hover:text-emerald-200 dark:hover:border-emerald-400 dark:hover:shadow-2xl backdrop-blur-md transition-all duration-300";
 
 	return (
-		<header className="relative glass-effect shadow-2xl sticky top-0 z-50 border-b border-white/20">
+		<header className="sticky top-0 z-50 glass-effect shadow-2xl border-b border-white/20">
 			<div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-teal-500/5 to-cyan-500/5" />
 			<div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
 			<div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-teal-500/40 to-transparent mt-0.5" />

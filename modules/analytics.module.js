@@ -1,11 +1,11 @@
+import { ANALYTICS_ENDPOINT as ENDPOINT } from "@/config/analytics";
+
 const Q = [];
 let T = null;
 let backoffMs = 0;
 
 const FLUSH_MS = 1500;
 const BATCH_MAX = 50;
-// було "/api/report" — тепер пишемо одразу на бекенд-роут
-const ENDPOINT = "/api/analytics/events";
 const SOFT_PAYLOAD_LIMIT = 60 * 1024;
 let ctx = {};
 

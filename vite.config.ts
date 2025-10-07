@@ -147,6 +147,15 @@ export default defineConfig(({ mode }) => {
 			port: Number(env.VITE_DEV_PORT || 5173),
 			strictPort: true,
 			proxy: {
+				// нове: щоб CSS з бека працював у фреймі
+				"/public": { target: API_TARGET, changeOrigin: true },
+
+				// аналітика
+				"/api/stats": {
+					target: API_TARGET,
+					changeOrigin: true,
+					rewrite: (p) => p.replace(/^\/api\/stats/, "/api/analytics/stats"),
+				},
 				"/api/report": {
 					target: API_TARGET,
 					changeOrigin: true,
@@ -158,6 +167,8 @@ export default defineConfig(({ mode }) => {
 					rewrite: (p) => p.replace(/^\/analytics/, "/api/analytics"),
 				},
 				"/api": { target: API_TARGET, changeOrigin: true },
+
+				// решта як було…
 				"/feed": {
 					target: API_TARGET,
 					changeOrigin: true,
