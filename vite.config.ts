@@ -42,17 +42,38 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
 function analyticsModulePlugin(env: Record<string, string>): PluginOption {
 	return {
 		name: "virtual-ads-analytics",
+		enforce: "pre",
 		resolveId: (id) => (id === "virtual:ads-analytics" ? id : null),
 		load(id) {
 			if (id !== "virtual:ads-analytics") return null;
 
 			const enabled = String(env.VITE_ENABLE_REPORTING || "false") === "true";
-			if (!enabled) return `export async function initAnalytics() {};`;
-			const file = path.resolve(process.cwd(), "modules/analytics.module.js");
-			if (!fs.existsSync(file)) {
-				throw new Error(`[virtual-ads-analytics] File not found: ${file}`);
+			// якщо репортинг вимкнено — повертаємо стаби
+			if (!enabled) {
+				return `
+          export const initAnalytics = async () => {};
+          export const track = () => {};
+          export default undefined;
+        `.trim();
 			}
-			return `export { initAnalytics } from "/modules/analytics.module.js";`;
+
+			const file = path.resolve(process.cwd(), "modules/analytics.module.js");
+			// якщо файл не існує — теж стаби (щоб білд не падав)
+			if (!fs.existsSync(file)) {
+				return `
+          export const initAnalytics = async () => {};
+          export const track = () => {};
+          export default undefined;
+        `.trim();
+			}
+
+			const resolved = file.replace(/\\\\/g, "/"); // Windows path → POSIX
+			return `
+        import * as real from ${JSON.stringify(resolved)};
+        export const initAnalytics = real.initAnalytics ?? (async () => {});
+        export const track = real.track ?? (() => {});
+        export default undefined;
+      `.trim();
 		},
 	};
 }
@@ -72,11 +93,28 @@ function adsModulePlugin(env: Record<string, string>): PluginOption {
 				google: path.resolve(root, "modules/google.only.js"),
 			};
 			const file = map[mode];
-			if (!file) return `export async function initAds(){}`;
-			if (!fs.existsSync(file)) {
-				throw new Error(`[virtual-ads-module] File not found: ${file}`);
+
+			if (!file || !fs.existsSync(file)) {
+				return `
+          export async function initAds() {}
+          export async function requestAndDisplay() {}
+          export async function refreshAds() {}
+          export async function mount() {}
+          export async function unmount() {}
+          export default undefined;
+        `.trim();
 			}
-			return fs.readFileSync(file, "utf8");
+
+			const resolved = file.replace(/\\/g, "/");
+			return `
+        import * as real from ${JSON.stringify(resolved)};
+        export const initAds = real.initAds ?? (async () => {});
+        export const requestAndDisplay = real.requestAndDisplay ?? (async () => {});
+        export const refreshAds = real.refreshAds ?? (async () => {});
+        export const mount = real.mount ?? (async () => {});
+        export const unmount = real.unmount ?? (async () => {});
+        export default undefined;
+      `.trim();
 		},
 	};
 }

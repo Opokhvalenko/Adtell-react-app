@@ -1,35 +1,40 @@
-import { requestAndDisplay } from "virtual:ads-module";
-import { useEffect, useId, useMemo, useRef } from "react";
+import type { JSX } from "react";
+import { type HTMLAttributes, useEffect, useId, useMemo, useRef } from "react";
 import { ensureAdsModule, getAdsModule } from "@/lib/ads/window";
 import { resolveAdserverEndpoint } from "@/lib/adserver";
 import { cn } from "@/lib/cn";
 import type { AdClient } from "@/types/adserver-client";
 
-declare global {
-	interface Window {
-		pbjs?: { que?: Array<() => void> };
-	}
-}
-
-type AdsSize = `${number}x${number}`;
-type Placement = "inline" | "banner" | "sidebar-right";
-
-type Props = {
-	id?: string;
-	className?: string;
-	sizes?: AdsSize[];
-	type?: "banner" | "sidebar" | "inline";
+export type AdSlotProps = HTMLAttributes<HTMLDivElement> & {
+	sizes?: SizeStr[];
+	type?: AdSlotType;
 	geo?: string;
 	floorCpm?: number;
 	endpoint?: string;
 	fallbackMs?: number;
-	placement?: Placement;
+	placement?: "inline" | "banner" | "sidebar-right";
 	disableBadge?: boolean;
 };
 
-function parseSize(s: AdsSize) {
+type RequestOpts = {
+	el: HTMLElement;
+	size: SizeStr;
+	type: AdSlotType;
+	geo?: string;
+	uid?: string;
+	floor?: number;
+	endpoint?: string;
+	domId?: string;
+};
+
+function parseSize(s: SizeStr) {
 	const [w, h] = s.split("x").map((n) => parseInt(n, 10));
 	return { w: Number.isFinite(w) ? w : 300, h: Number.isFinite(h) ? h : 250 };
+}
+
+function toTuple(s: SizeStr): SizeTuple {
+	const [w, h] = s.split("x").map(Number);
+	return [w, h] as SizeTuple;
 }
 
 function renderFallbackAd(element: HTMLElement, id: string) {
@@ -77,15 +82,15 @@ function safeUnmount(domId: string) {
 	try {
 		getAdsModule()?.unmount?.(domId);
 	} catch {
-		// ignore
+		/* ignore */
 	}
 	document.getElementById(domId)?.replaceChildren();
 }
 
 async function waitForPbjs(timeout = 5000) {
 	const start = Date.now();
-	while (!window.pbjs?.que) {
-		if (Date.now() - start > timeout) break;
+	while (!(window as Window).pbjs && Date.now() - start <= timeout) {
+		// eslint-disable-next-line no-await-in-loop
 		await new Promise((r) => setTimeout(r, 30));
 	}
 }
@@ -101,7 +106,7 @@ export default function AdSlot({
 	fallbackMs = 1800,
 	placement = "inline",
 	disableBadge = false,
-}: Props) {
+}: AdSlotProps): JSX.Element {
 	const uid = useId();
 	const domId = id || `adslot-${uid}`;
 	const hostRef = useRef<HTMLDivElement>(null);
@@ -120,6 +125,7 @@ export default function AdSlot({
 	}, [placement]);
 
 	useEffect(() => {
+		if (typeof window === "undefined") return;
 		if (!hostRef.current || sizes.length === 0) return;
 
 		const el = hostRef.current;
@@ -131,20 +137,54 @@ export default function AdSlot({
 			visible = true;
 
 			try {
-				const adsModule = ensureAdsModule();
-				adsModule.registry ??= {};
-				adsModule.registry[domId] = {
-					sizes: sizes.map((s) => s.split("x").map(Number) as [number, number]),
+				const maybe = ensureAdsModule();
+				if (maybe instanceof Promise) await maybe;
+
+				const adsModule = getAdsModule();
+				if (!adsModule) {
+					renderFallbackAd(el, domId);
+					return;
+				}
+
+				// ⬇️ без присвоєння в виразі
+				if (!adsModule.registry) {
+					adsModule.registry = {};
+				}
+				const reg = adsModule.registry;
+				reg[domId] = {
+					sizes: sizes.map(toTuple),
 					type,
 				};
 
 				await waitForPbjs();
-				await requestAndDisplay();
+
+				const best = (sizes[0] ?? "300x250") as SizeStr;
+				const ep = resolveAdserverEndpoint(endpoint);
+
+				if (adsModule.requestAndDisplay) {
+					const opts: RequestOpts = {
+						el,
+						size: best,
+						type,
+						geo,
+						uid: adsModule.uid ?? "",
+						floor: floorCpm,
+						endpoint: ep,
+						domId,
+					};
+					await adsModule.requestAndDisplay(opts);
+
+					await new Promise((r) => setTimeout(r, 0));
+					await adsModule.refreshAds?.([domId]);
+				} else {
+					renderFallbackAd(el, domId);
+				}
 			} catch (e) {
 				console.error("[AdSlot] mount error:", e);
 				renderFallbackAd(el, domId);
 			}
 
+			// резервний рендер
 			fallbackTimer = window.setTimeout(async () => {
 				const hasIframe = !!el.querySelector("iframe");
 				const hasHtml = !!el.innerHTML && el.innerHTML.trim().length > 0;
@@ -158,10 +198,10 @@ export default function AdSlot({
 						const mod = (await import(
 							/* @vite-ignore */ runtimePath
 						)) as unknown as AdClient;
-						const best = sizes[0];
+						const best = (sizes[0] ?? "300x250") as SizeStr;
 						const ep = resolveAdserverEndpoint(endpoint);
 						const bid = await mod.requestBid({
-							size: best as `${number}x${number}`,
+							size: best,
 							type,
 							geo,
 							uid: getAdsModule()?.uid ?? "",
@@ -170,7 +210,7 @@ export default function AdSlot({
 						});
 						if (bid) mod.renderBidInto(el, bid, { endpoint: ep });
 					} catch {
-						// ignore
+						/* ignore */
 					}
 				}
 			}, fallbackMs) as unknown as number;
@@ -219,7 +259,6 @@ export default function AdSlot({
 				)}
 				style={{ width: first.w, height: first.h, minHeight: first.h }}
 			>
-				{/* loader */}
 				<div className="text-gray-400 dark:text-gray-500 text-sm flex flex-col items-center justify-center">
 					<div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
 					<div className="font-medium text-gray-600 dark:text-gray-300">

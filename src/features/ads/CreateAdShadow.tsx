@@ -3,12 +3,9 @@ import { useEffect, useRef } from "react";
 type ResizeMsg = { type: "resize"; height: number };
 
 function isResizeMsg(d: unknown): d is ResizeMsg {
-	return (
-		typeof d === "object" &&
-		d !== null &&
-		(d as { type?: unknown }).type === "resize" &&
-		typeof (d as { height?: unknown }).height === "number"
-	);
+	if (typeof d !== "object" || d === null) return false;
+	const obj = d as Record<string, unknown>;
+	return obj.type === "resize" && typeof obj.height === "number";
 }
 
 export default function CreateAdShadow() {
@@ -18,19 +15,17 @@ export default function CreateAdShadow() {
 		const onMessage = (e: MessageEvent<unknown>) => {
 			const win = frameRef.current?.contentWindow;
 			if (!win || e.source !== win) return;
-
 			if (!(e.origin === "null" || e.origin === window.location.origin)) return;
 			if (!isResizeMsg(e.data)) return;
 
-			if (frameRef.current) {
-				frameRef.current.style.height = `${Math.max(900, e.data.height)}px`;
+			const el = frameRef.current;
+			if (el?.style) {
+				el.style.height = `${Math.max(900, e.data.height)}px`;
 			}
 		};
 		window.addEventListener("message", onMessage);
 		return () => window.removeEventListener("message", onMessage);
 	}, []);
-
-	const _src = "/create-lineitem";
 
 	return (
 		<div className="max-w-6xl mx-auto p-6 space-y-8">
@@ -56,7 +51,7 @@ export default function CreateAdShadow() {
 					src="/create-lineitem"
 					title="Create Line Item"
 					style={{ width: "100%", height: "1200px", border: 0 }}
-					sandbox="allow-scripts allow-forms allow-popups allow-modals"
+					sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
 					referrerPolicy="no-referrer"
 					loading="lazy"
 				/>

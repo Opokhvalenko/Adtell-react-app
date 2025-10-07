@@ -1,7 +1,6 @@
 export {};
 
 declare global {
-	// базові типи
 	type AdSlotType = "inline" | "banner" | "sidebar";
 	type SizeTuple = readonly [number, number];
 	type SizeStr = `${number}x${number}`;
@@ -11,7 +10,6 @@ declare global {
 		type?: AdSlotType;
 	}
 
-	// подія у дебаг-лог
 	type AdsEvt = {
 		ts?: number;
 		id?: string;
@@ -24,10 +22,9 @@ declare global {
 		[key: string]: unknown;
 	};
 
-	/** ЄДИНИЙ інтерфейс для window.__ads */
 	interface AdsModule {
 		uid?: string;
-		registry?: Record<string, AdsRegistryItem>; // ← додано
+		registry?: Record<string, AdsRegistryItem>;
 
 		initAds?: () => void | Promise<void>;
 		requestAndDisplay?: (adUnits?: unknown) => void | Promise<void>;
