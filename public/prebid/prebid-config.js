@@ -1,73 +1,44 @@
 window.pbjs = window.pbjs || { que: [] };
 window.googletag = window.googletag || { cmd: [] };
 
-pbjs.que.push(() => {
-	pbjs.setConfig({
-		consentManagement: {
-			gdpr: {
-				cmpApi: "tcfv2",
-				timeout: 8000,
-				allowAuctionWithoutConsent: false,
-			},
-			usp: { cmpApi: "usp", timeout: 8000 }, 
-		},
-		bidderTimeout: 1200,
-		enableTIDs: true,
-	});
+pbjs.que.push(function () {
+  pbjs.setConfig({
+    consentManagement: {
+      gdpr: { cmpApi: "tcfv2", timeout: 8000, allowAuctionWithoutConsent: false },
+      usp: { cmpApi: "usp", timeout: 8000 },
+    },
+    bidderTimeout: 1200,
+    enableTIDs: true,
+    enableSendAllBids: true,
+  });
 
-	const adUnits = [
-		{
-			code: "ad-slot-1",
-			mediaTypes: {
-				banner: {
-					sizes: [
-						[300, 250],
-						[300, 600],
-					],
-				},
-			},
-			bids: [
-				{
-					bidder: "adtelligent",
-					params: {
-						aid: "YOUR_ADTELLIGENT_AID",
-					},
-				},
-				{
-					bidder: "bidmatic",
-					params: {
-						placementId: "YOUR_BIDMATIC_PLACEMENT_ID",
-					},
-				},
-			],
-		},
-	];
+  const adUnits = [
+    { code: "ad-adtelligent", mediaTypes: { banner: { sizes: [[300,250]] } }, bids: [{ bidder: "adtelligent", params: { aid: 350975 } }] },
+    { code: "ad-bidmatic",   mediaTypes: { banner: { sizes: [[300,250]] } }, bids: [{ bidder: "bidmatic",   params: { source: 886409 } }] },
+    { code: "ad-beautiful",  mediaTypes: { banner: { sizes: [[300,250]] } }, bids: [{ bidder: "customAdServer", params: { adUnitCode: "ad-beautiful", adServerUrl: "/api/adserver/bid" } }] },
+  ];
 
-	pbjs.addAdUnits(adUnits);
+  pbjs.addAdUnits(adUnits);
 
-	pbjs.requestBids({
-		adUnits,
-		bidsBackHandler: () => {
-			pbjs.setTargetingForGPTAsync();
-			googletag.cmd.push(() => {
-				googletag.pubads().refresh();
-			});
-		},
-		timeout: 1100,
-	});
+  pbjs.requestBids({
+    adUnitCodes: adUnits.map(u => u.code),
+    bidsBackHandler: function () {
+      pbjs.setTargetingForGPTAsync();
+      googletag.cmd.push(function () { googletag.pubads().refresh(); });
+    },
+    timeout: 1100,
+  });
 });
 
-googletag.cmd.push(() => {
-	googletag
-		.defineSlot(
-			"/YOUR_NETWORK/YOUR_AD_UNIT",
-			[
-				[300, 250],
-				[300, 600],
-			],
-			"ad-slot-1",
-		)
-		.addService(googletag.pubads());
-	googletag.pubads().disableInitialLoad(); 
-	googletag.enableServices();
+googletag.cmd.push(function () {
+  const pubads = googletag.pubads();
+  pubads.disableInitialLoad();
+  pubads.enableSingleRequest();
+  pubads.setCentering(true);
+
+  googletag.defineSlot("/1234567/ad-adtelligent", [[300,250]], "ad-adtelligent").addService(pubads).setTargeting("pos","adtelligent");
+  googletag.defineSlot("/1234567/ad-bidmatic",   [[300,250]], "ad-bidmatic").addService(pubads).setTargeting("pos","bidmatic");
+  googletag.defineSlot("/1234567/ad-beautiful",  [[300,250]], "ad-beautiful").addService(pubads).setTargeting("pos","beautiful");
+
+  googletag.enableServices();
 });

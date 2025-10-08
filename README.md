@@ -1,276 +1,316 @@
-# Adtell-react-app
+# AdTell React App
 
-## 🌍 Демо
-[https://adtell-react-app.vercel.app](https://adtell-react-app.vercel.app)  
-- **Frontend (Vercel):**
+Сучасний новинний додаток з рекламою, аналітикою та віртуальними модулями.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 🚀 Технології
 
-Currently, two official plugins are available:
+- **React 18** - UI бібліотека
+- **TypeScript** - строга типізація
+- **Vite** - швидкий бандлер
+- **Tailwind CSS 4** - стилізація
+- **React Router** - маршрутизація
+- **Zustand** - управління станом
+- **TanStack Query** - кешування даних
+- **React Hook Form + Zod** - форми та валідація
+- **Sentry** - моніторинг помилок
+- **Prebid.js** - рекламні аукціони
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 📁 Структура проекту
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-# Ads Integration (Prebid.js + GAM) — R&D
-## Огляд
-Навчальний проєкт з інтеграцією **Prebid.js** (header bidding) і fallback-режиму **Google Ad Manager (GAM)**.  
-Рекламний аукціон винесено у **віртуальний модуль**, який можна вмикати/вимикати через `.env`.  
-Є сторінка **`/ads-debug`** для логування подій аукціону та ручного `request/refresh`.
-
-## Цілі
-- Порівняти способи тригерити рендер: `getHighestCpmBids` vs `onEvent('bidResponse')`/`bidWon` vs `bidsBackHandler`.
-- Перевірити інтеграцію з двома адаптерами: Adtelligent та Bidmatic.
-- Забезпечити fallback на чистий Google Ad Manager (GAM) без Prebid.
-
-## Архітектура
-- **Prebid**: завантаження через `loadPrebid.ts`; конфіг `prebidConfig.ts`.
-- **GAM**: завантаження через `loadGpt.ts`.
-- **Вмикання/вимикання**: `virtual:ads-config` (`ENABLE_PREBID`, `ENABLE_GAM`, `ADS_DEBUG`).
-- **Слоти**: `ad-top` (728x90/970x90), `ad-side` (300x250/300x600).
-- **Логи**: сторінка `/ads-debug`, події `auctionInit/End, bidRequested, bidResponse, bidWon, noBid`.
-
-## Стек
-
-- **Vite + React + TS**
-- **Prebid.js** (кастом/локальний білд з адаптерами → fallback на CDN)
-- **Google Publisher Tag (GPT)**
-- TailwindCSS (UI)
-- Biome (літинг)
-
----
-
-## Встановлення та запуск
-
-```bash
-npm i
-npm run dev
-# відкрийте http://localhost:5173
-## Корисні скрипти:
-```
-```bash
-npm run build    # прод-збірка
-npm run preview  # перегляд прод-збірки
-npm run test     # (за потреби)
-npm run biome:fix # авто-лінинг/автофікси
-```
-
-## Файли/каталоги, що стосуються реклами
-```bash
-modules/
-  prebid.auction.js   # JS-модуль з Prebid-аукціоном (автоінʼєкція слотів, івенти, render)
-  google.only.js      # JS-модуль з чистим GPT (без Prebid)
-```
-```bash
-public/
-  prebid/
-    prebid.js         # локальний Prebid build (fallback до CDN)
-```
-```bash
 src/
-  features/ads/AdsDebugPage.tsx  # /ads-debug — сторінка логів + кнопки Request/Refresh
-  routes/AppRoutes.tsx           # маршрути; приховування /ads-debug, якщо ADS_DEBUG=false
-  types/virtual-ads-module.d.ts  # типи для вірт. модуля (dev-зручність)
+├── main.tsx              # Точка входу
+├── App.tsx              # Головний компонент
+├── components/           # UI компоненти
+│   ├── ads/             # Рекламні компоненти
+│   ├── form/            # Форми
+│   ├── ui/              # Базові UI компоненти
+│   ├── Header.tsx       # Шапка
+│   ├── Footer.tsx       # Підвал
+│   └── Layout.tsx       # Основний layout
+├── features/            # Функціональність
+│   ├── auth/            # Авторизація
+│   ├── news/            # Новини
+│   ├── ads/             # Реклама
+│   └── stats/           # Аналітика
+├── lib/                 # Утиліти та сервіси
+│   ├── ads/             # Рекламна логіка
+│   ├── analytics/       # Аналітика
+│   ├── api.ts           # API клієнт
+│   └── sentry.ts        # Sentry конфігурація
+├── store/               # Zustand стор
+├── types/               # TypeScript типи
+└── routes/              # Маршрути
 ```
+
+## 🛠 Встановлення
+
 ```bash
-virtual:
-  virtual:ads-module  # обирає prebid.auction.js або google.only.js на основі .env
-  virtual:ads-config  # прокидує прапорці/значення з .env у рантайм
+# Встановлення залежностей
+npm install
+
+# Запуск в режимі розробки
+npm run dev
+
+# Збірка для продакшена
+npm run build
+
+# Прев'ю збірки
+npm run preview
 ```
 
-## .env — приклад і пояснення
+## 🔧 Налаштування
 
-Приклад .env:
+Створіть файл `.env`:
 
-## вибір модулю: prebid | google
-VITE_ADS_MODULE=prebid
+```env
+# API
+VITE_API_URL=http://localhost:3000
 
-## прапорці
-VITE_ENABLE_PREBID=true
-VITE_ENABLE_GAM=false
-VITE_ADS_DEBUG=true
+# Реклама
+VITE_ENABLE_ADS=true
+VITE_AD_STACK=prebid
 
-## Bidmatic (опційно)
-VITE_ENABLE_BIDMATIC=true
-VITE_BIDMATIC_SOURCE=886409
+# Аналітика
+VITE_ENABLE_STATS=true
 
+# Sentry (опціонально)
+VITE_SENTRY_DSN=your-sentry-dsn
+```
 
+## 🚀 Запуск
 
-## Таблиця змінних:
+### Локальна розробка
 
-| Змінна                 | Значення             | За замовчуванням | Опис                                                                                                |
-| ---------------------- | -------------------- | ---------------: | --------------------------------------------------------------------------------------------------- |
-| `VITE_ADS_MODULE`      | `prebid` \| `google` |         `prebid` | Обирає віртуальний модуль: Prebid-аукціон або чистий GAM                                            |
-| `VITE_ENABLE_PREBID`   | `true/false`         |           `true` | Вмикає роботу Prebid у модулі `prebid`                                                              |
-| `VITE_ENABLE_GAM`      | `true/false`         |          `false` | Додає GPT (GAM). Якщо `true`, таргетинг із Prebid передається у GAM і робиться `pubads().refresh()` |
-| `VITE_ADS_DEBUG`       | `true/false`         |           `true` | Вмикає сторінку `/ads-debug` і кнопки навігації; логування подій                                    |
-| `VITE_ENABLE_BIDMATIC` | `true/false`         |           `true` | Підключення адаптера **bidmatic** (лише для юнітів з 300×250)                                       |
-| `VITE_BIDMATIC_SOURCE` | number               |                — | Обовʼязкове для bidmatic: `params.source`                                                           |
+```bash
+# Запуск dev сервера
+npm run dev
 
-## Як це працює
+# Запуск тестів
+npm test
 
-1. На старті застосунку імпортується virtual:ads-module і викликає initAds().
+# Лінтинг
+npm run lint
 
-2. Модуль:
+# Форматування
+npm run format
+```
 
-* інʼєктує два контейнери:
+### Production Build
 
-* ad-top — перед <main/>, авто-підбір ширини та росту, розміри: 970×90, 728×90, 468×60, 320×50;
+```bash
+# Збірка
+npm run build
 
-* ad-side — fixed праворуч від контенту, розміри: 300×600, 300×250.
+# Прев'ю збірки
+npm run preview
+```
 
-* додає плейсхолдери до рендера, логірує події у window.__adslog та диспатчить CustomEvent('ads:prebid');
+## 🎨 UI/UX
 
-* за потреби підвантажує Prebid (локальний білд → fallback на CDN) та GPT.
+### Tailwind CSS 4
+- Сучасна система дизайну
+- Mobile-first підхід
+- Темна/світла тема
+- Адаптивний дизайн
 
-3. Рендер:
+### Компоненти
+- **Button** - кнопки з варіантами
+- **Input** - поля вводу
+- **Card** - картки контенту
+- **Modal** - модальні вікна
+- **Loader** - індикатори завантаження
 
-* без GAM (типово): після requestBids беремо переможців pbjs.getHighestCpmBids() і робимо pbjs.renderAd() у власний iframe (прямий рендер).
+## 📱 Сторінки
 
-* з GAM: викликаємо pbjs.setTargetingForGPTAsync() і googletag.pubads().refresh() для слотів.
+### Авторизація
+- **Login** - вхід в систему
+- **Register** - реєстрація
+- **Profile** - профіль користувача
 
-4. Refresh:
+### Новини
+- **Feed** - стрічка новин
+- **Article** - повна стаття
+- **Search** - пошук новин
 
-* Prebid: повторний requestBids → direct render або GPT refresh (залежно від прапорців);
+### Реклама
+- **Ad Slots** - рекламні слоти
+- **Auction Logs** - логи аукціонів
+- **Ad Demo** - демонстрація реклами
 
-* Google-only: просто googletag.pubads().refresh().
+## 🎯 Рекламна система
 
-## Чому не на bidWon
+### Віртуальні модулі
+Проект використовує віртуальні модулі для ізоляції реклами:
 
-bidWon приходить per-slot. Якщо слотів кілька, виникає гонка та часткове оновлення. Стабільніший підхід:
+- `virtual:ads-module` - завантаження Prebid.js
+- `virtual:ads-config` - конфігурація адаптерів
+- `modules/prebid.auction.js` - логіка аукціонів
 
-* дочекатися кінця аукціону (bidsBackHandler/auctionEnd);
+### Рекламні провайдери
+1. **Власна гарна реклама** - кастомні креативи
+2. **Adtelligent** - зовнішній провайдер
+3. **Bidmatic** - зовнішній провайдер
 
-* зробити один setTargetingForGPTAsync() і один pubads().refresh() на всі слоти.
-Події bidResponse/bidWon ми все одно слухаємо — для метрик і дебагу.
+### Ad Slots
+- `ad-top-adtelligent` - топ банер
+- `ad-right-adtelligent` - права панель
+- `ad-right-bidmatic` - права панель Bidmatic
+- `ad-left-beautiful` - ліва панель (власна)
+- `ad-mobile-bidmatic` - мобільна реклама
 
-## getHighestCpmBids vs onEvent('bidResponse')
+## 📊 Аналітика
 
-* Без GAM (прямий рендер): брати переможців після аукціону через pbjs.getHighestCpmBids() і рендерити у свій iframe — найпростіше та керовано.
+### Події
+- `pageLoad` - завантаження сторінки
+- `auctionInit` - початок аукціону
+- `auctionEnd` - завершення аукціону
+- `bidRequested` - запит ставки
+- `bidResponse` - відповідь ставки
+- `bidWon` - виграна ставка
 
-* З GAM: onEvent('bidResponse') корисний для логів/аналітики, але рендер виконуємо після bidsBackHandler → setTargetingForGPTAsync() → refresh().
+### Відправка даних
+```typescript
+// Надійна відправка через sendBeacon
+function sendStat(payload: unknown) {
+  const url = `${import.meta.env.VITE_API_URL}/api/stats/ingest`;
+  const blob = new Blob([JSON.stringify(payload)], { 
+    type: "application/json" 
+  });
+  
+  if (!navigator.sendBeacon(url, blob)) {
+    fetch(url, { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json" }, 
+      body: JSON.stringify(payload) 
+    }).catch(() => {});
+  }
+}
+```
 
-## Адаптери
+## 🔍 Моніторинг
 
-* adtelligent — завжди присутній (параметр aid: 350975).
+### Sentry
+- Відстеження помилок
+- Performance моніторинг
+- Session Replay
+- User context
 
-* bidmatic — додається лише коли у юніті є розмір 300×250 (тобто ad-side) і вказано VITE_ENABLE_BIDMATIC=true та VITE_BIDMATIC_SOURCE.
+### Конфігурація
+```typescript
+// Відключення в dev режимі
+if (import.meta.env.MODE === "development" && !import.meta.env.VITE_SENTRY_DSN) {
+  console.log("🔍 Sentry disabled in development mode");
+  return;
+}
+```
 
-* У дев-оточенні bidmatic інколи віддає timeout (це очікувано; у логах видно request timeout), але flow загалом коректний.
+## 🧪 Тестування
 
-## Маршрути та UI
+```bash
+# Запуск тестів
+npm test
 
-* / — головна (слоти інʼєктуються автоматично).
+# Запуск з покриттям
+npm run test:coverage
 
-* /ads-debug — сторінка логів Prebid (працює лише коли VITE_ADS_DEBUG=true):
+# Watch режим
+npm run test:watch
+```
 
-* Request & display — запустити аукціон і відрендерити.
+### Структура тестів
+- `App.test.tsx` - головний компонент
+- `features/auth/LoginForm.test.tsx` - форма входу
+- `features/news/Feed.test.tsx` - стрічка новин
+- `components/ui/Button.test.tsx` - UI компоненти
+- `store/auth.test.ts` - стор авторизації
 
-* Refresh bids — оновити ставки/таргетинг (в обох інтеграціях).
+## 🎨 Стилізація
 
-Кнопка Ads test / Home в хедері автоматично змінює назву залежно від поточної сторінки й приховується, коли VITE_ADS_DEBUG=false.
+### Tailwind CSS 4
+```css
+/* Кастомні стилі */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-## Відомі попередження
+/* Темна тема */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+}
+```
 
-* Prebid WARNING: enableTIDs config denied 'transmitTid' — інформаційне; означає, що передачу TID вимкнено. На роботу демо не впливає.
+### Компоненти
+```tsx
+// Приклад використання
+<Button 
+  variant="primary" 
+  size="lg" 
+  className="w-full"
+>
+  Увійти
+</Button>
+```
 
-## Відповідність тестовому завданню
+## 🚀 Оптимізація
 
-* Розглянуто документацію Prebid і приклади адаптерів (див. Prebid репозиторій).
+### Code Splitting
+- Lazy loading компонентів
+- Динамічні імпорти
+- Route-based splitting
 
-* Написано модуль рендера через Prebid.js (modules/prebid.auction.js).
+### Performance
+- React.memo для компонентів
+- useMemo для обчислень
+- useCallback для функцій
+- Віртуалізація списків
 
-* Підключення через віртуальний модуль (virtual:ads-module), керується через .env.
+### Bundle Analysis
+```bash
+# Аналіз розміру бандлу
+npm run build:analyze
+```
 
-* Досліджено події Prebid і зроблено вивід логів на окремій сторінці /ads-debug.
+## 🔒 Безпека
 
-* В коді прокоментовано, чому не рендеримо на bidWon.
+- **CSP** - Content Security Policy
+- **HTTPS** - захищене з'єднання
+- **XSS Protection** - захист від XSS
+- **CSRF Protection** - захист від CSRF
 
-* Порівняно getHighestCpmBids vs onEvent('bidResponse'), описано коли що застосовувати.
+## 📱 PWA
 
-* Реклама рендериться на всіх сторінках (мінімум два блоки).
+### Service Worker
+- Кешування ресурсів
+- Offline підтримка
+- Background sync
 
-* Є два адаптери: Adtelligent і Bidmatic.
+### Manifest
+- Іконки додатку
+- Назва та опис
+- Кольори теми
 
-* Зроблено другий рекламний модуль — чистий GAM (modules/google.only.js).
+## 🚀 Деплой
 
-* Зроблено refresh реклами для обох інтеграцій (кнопка на /ads-debug).
+### Vercel
+```bash
+# Встановлення Vercel CLI
+npm i -g vercel
 
-## Нотатки по верстці реклами
+# Деплой
+vercel --prod
+```
 
-* ad-top вставляється перед основним контентом та не прилипає до краю екрана — має зовнішні відступи і максимальну ширину за обраним розміром.
+### Environment Variables
+```env
+VITE_API_URL=https://api.yourapp.com
+VITE_SENTRY_DSN=your-sentry-dsn
+VITE_ENABLE_ADS=true
+```
 
-* ad-side розміщується fixed праворуч від контейнера контенту з відступом; розміри підбираються автоматично (300×600 або 300×250).
+## 📝 Ліцензія
 
-## Траблшутінг
-
-* Немає ставок від bidmatic: перевірте VITE_BIDMATIC_SOURCE і мережу; у дев-оточенні можливі timeouts — це нормально.
-
-* GAM не показує рекламу: переконайтеся, що VITE_ENABLE_GAM=true і обраний модуль VITE_ADS_MODULE=google або prebid+GAM з правильними слотами.
-
-## Корисні посилання
-
-* Prebid.js: https://prebid.org/
-
-* Репозиторій Prebid.js (адаптери): https://github.com/prebid/Prebid.js
-
-Проєкт призначено для R&D/демо. У проді потрібні: власні плейсменти, реальні ад-юніти GAM, згода користувачів (TCF v2), перевірка приватності, білди з потрібними адаптерами та прод-конфігом Prebid.
+MIT License

@@ -73,7 +73,7 @@ export function Controls(props: ControlsProps) {
 				<button
 					type="button"
 					onClick={onSaveView}
-					className="px-3 py-2 rounded bg-blue-600 text-white"
+					className="px-6 py-3 rounded-xl text-base font-semibold border shadow-lg transition-all duration-300 ease-in-out bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 hover:from-blue-500 hover:to-indigo-500 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5 active:scale-95 cursor-pointer select-none backdrop-blur-sm"
 				>
 					Save View
 				</button>
@@ -96,7 +96,7 @@ export function Controls(props: ControlsProps) {
 				<button
 					type="button"
 					onClick={onOpenChart}
-					className="px-3 py-2 rounded border"
+					className="px-6 py-3 rounded-xl text-base font-semibold border shadow-sm transition-all duration-300 ease-in-out bg-white/95 text-gray-800 border-gray-300 hover:bg-white hover:shadow-md hover:scale-105 hover:-translate-y-0.5 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-500 dark:hover:bg-gray-600 dark:hover:shadow-lg cursor-pointer select-none backdrop-blur-sm"
 				>
 					Compare (Chart)
 				</button>

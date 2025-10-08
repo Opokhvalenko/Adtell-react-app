@@ -1,5 +1,3 @@
-// Єдина точка правди для всіх ads-стилів + компоновщик під різні режими
-
 export const ADS_WRAP_CSS =
 	".ads-wrap{position:relative;display:block;margin:0 auto}";
 
@@ -29,7 +27,7 @@ export const ADS_HOUSE_CSS = `
 `.trim();
 
 /**
- * Склеює CSS під конкретний модуль.
+ * CSS під конкретний модуль.
  * @param {{includeIframe?: boolean, includeSideFixed?: boolean, includeHouse?: boolean}} opts
  */
 export function composeAdsCss(opts = {}) {

@@ -1,7 +1,7 @@
 import type { BaseEvent } from "@/lib/analytics/events";
 
 export const ANALYTICS_ENDPOINT = String(
-	import.meta.env.VITE_REPORTING_URL || "/api/report",
+	import.meta.env.VITE_REPORTING_URL || "/analytics/events",
 );
 
 export async function sendAnalyticsBatch(

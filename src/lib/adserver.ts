@@ -13,10 +13,8 @@ export function resolveAdserverEndpoint(custom?: string): string {
 
 	if (fromEnv) return strip(fromEnv);
 
-	// опціонально з глобалу (якщо інжектуєш з index.html)
 	const w = window as unknown as { __ads?: { endpoint?: string } };
 	if (w.__ads?.endpoint) return strip(w.__ads.endpoint);
 
-	// у крайньому разі — локальний бек
 	return "http://127.0.0.1:3000";
 }

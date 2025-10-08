@@ -6,7 +6,6 @@ import { useFeed } from "./useFeed";
 
 type LocState = { url?: string; title?: string } | undefined;
 
-/** Перетворює HTML-рядок у безпечні React-вузли без dangerouslySetInnerHTML */
 function renderSafeHtml(html: string) {
 	const allowed = new Set([
 		"p",
@@ -58,7 +57,6 @@ function renderSafeHtml(html: string) {
 		const el = node as HTMLElement;
 		const tag = el.tagName.toLowerCase();
 
-		// Якщо тег не у списку — рендеримо лише його дітей
 		if (!allowed.has(tag)) {
 			return createElement(Fragment, { key }, ...childrenOf(el, key));
 		}
@@ -79,12 +77,10 @@ function renderSafeHtml(html: string) {
 			if (isSafeUrl(src)) {
 				props.src = src;
 				props.alt = el.getAttribute("alt") ?? "";
-				// базові обмеження, щоб не ламати верстку
 				props.loading = "lazy";
 				props.decoding = "async";
 				props.style = { maxWidth: "100%", height: "auto", borderRadius: "8px" };
 			} else {
-				// небезпечні картинки не рендеримо
 				return null;
 			}
 		}

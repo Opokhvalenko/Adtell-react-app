@@ -1,0 +1,18 @@
+node_modules
+dist/
+build/
+coverage/
+.vite
+.cache
+reports
+public/prebid
+
+
+# згенерований/вбудований CSS
+public/assets/**
+src/tailwind.css
+**/*.min.css
+src/ssr/embed.css
+
+# інше сміття
+*.log

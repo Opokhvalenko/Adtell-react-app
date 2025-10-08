@@ -13,6 +13,15 @@ export default defineConfig({
 			"virtual:ads-module": fileURLToPath(
 				new URL("./src/test/mocks/virtual-ads-module.ts", import.meta.url),
 			),
+			"virtual:build-info": fileURLToPath(
+				new URL("./src/test/mocks/virtual-build-info.ts", import.meta.url),
+			),
+			"virtual:ads-bridge": fileURLToPath(
+				new URL("./src/test/mocks/virtual-ads-bridge.ts", import.meta.url),
+			),
+			"virtual:ads-analytics": fileURLToPath(
+				new URL("./src/test/mocks/virtual-ads-analytics.ts", import.meta.url),
+			),
 		},
 	},
 	plugins: [react()],

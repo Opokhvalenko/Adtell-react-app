@@ -1,6 +1,6 @@
 type Extra = Record<string, unknown>;
 
-const LOG_ENDPOINT = import.meta.env.VITE_LOG_URL || "/api/report";
+const LOG_ENDPOINT = import.meta.env.VITE_LOG_URL || "/analytics/events";
 
 export function reportError(err: unknown, extra: Extra = {}): void {
 	const payload =

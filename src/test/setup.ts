@@ -1,72 +1,67 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
 
-// matchMedia
-if (!("matchMedia" in window)) {
-	Object.defineProperty(window, "matchMedia", {
-		writable: true,
-		value: vi.fn().mockImplementation((query: string) => ({
-			matches: false,
-			media: query,
-			onchange: null,
-			addListener: vi.fn(),
-			removeListener: vi.fn(),
-			addEventListener: vi.fn(),
-			removeEventListener: vi.fn(),
-			dispatchEvent: vi.fn(),
-		})),
-	});
-}
+class MockIntersectionObserver implements IntersectionObserver {
+	readonly root: Element | Document | null = null;
+	readonly rootMargin = "0px";
+	readonly thresholds: ReadonlyArray<number> = [];
 
-// ResizeObserver
-if (!("ResizeObserver" in window)) {
-	class MockResizeObserver {
-		observe() {}
-		unobserve() {}
-		disconnect() {}
+	constructor(
+		_callback: IntersectionObserverCallback,
+		_options?: IntersectionObserverInit,
+	) {
+		void _callback;
+		void _options;
 	}
-	Object.defineProperty(window, "ResizeObserver", {
-		writable: true,
-		value: MockResizeObserver,
-	});
-}
 
-declare global {
-	interface Window {
-		pbjs?: unknown;
-		googletag?: unknown;
+	observe(_target: Element): void {
+		void _target;
+	}
+	unobserve(_target: Element): void {
+		void _target;
+	}
+	disconnect(): void {}
+	takeRecords(): IntersectionObserverEntry[] {
+		return [];
 	}
 }
 
-// Prebid mock
-window.pbjs = window.pbjs ?? {
-	que: [] as Array<() => void>,
-	onEvent: vi.fn(),
-	setConfig: vi.fn(),
-	addAdUnits: vi.fn(),
-	requestBids: vi.fn(),
-	getHighestCpmBids: vi.fn(() => [] as unknown[]),
-	renderAd: vi.fn(),
-	setTargetingForGPTAsync: vi.fn(),
-};
+class MockResizeObserver implements ResizeObserver {
+	constructor(_callback: ResizeObserverCallback) {
+		void _callback;
+	}
+	observe(_target: Element): void {
+		void _target;
+	}
+	unobserve(_target: Element): void {
+		void _target;
+	}
+	disconnect(): void {}
+}
 
-// GPT mock
-window.googletag = window.googletag ?? {
-	cmd: [] as Array<() => void>,
-	apiReady: false,
-	pubads: vi.fn(() => ({
-		refresh: vi.fn(),
-		disableInitialLoad: vi.fn(),
-		enableSingleRequest: vi.fn(),
-		setCentering: vi.fn(),
-		collapseEmptyDivs: vi.fn(),
-		addEventListener: vi.fn(),
-		getSlots: vi.fn(() => [] as Array<{ getSlotElementId: () => string }>),
-	})),
-	enableServices: vi.fn(),
-	defineSlot: vi.fn(() => ({
-		addService: vi.fn(),
-		getSlotElementId: vi.fn(() => ""),
-	})),
-	display: vi.fn(),
-};
+function mockMatchMedia(query: string): MediaQueryList {
+	const mql: MediaQueryList = {
+		matches: false,
+		media: query,
+		onchange: null,
+		addListener() {},
+		removeListener() {},
+		addEventListener() {},
+		removeEventListener() {},
+		dispatchEvent(): boolean {
+			return false;
+		},
+	};
+	return mql;
+}
+
+const g = globalThis as Window & typeof globalThis;
+
+g.IntersectionObserver = MockIntersectionObserver;
+
+if (typeof g.ResizeObserver === "undefined") {
+	g.ResizeObserver = MockResizeObserver;
+}
+
+if (typeof g.matchMedia === "undefined") {
+	g.matchMedia = mockMatchMedia;
+}

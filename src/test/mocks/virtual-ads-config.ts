@@ -1,10 +1,10 @@
-export const ADS_DEBUG = false;
-
 export const ENABLE_PREBID = false;
 export const ENABLE_GAM = false;
-
+export const ADS_DEBUG = false;
 export const ENABLE_BIDMATIC = false;
-export const BIDMATIC_SOURCE = 0;
-
-export const BIDDER_TIMEOUT = 2000;
-export const TIMEOUT_BUFFER = 400;
+export const BIDMATIC_SOURCE = 1;
+export const BIDMATIC_SPN = "test";
+export const ENABLE_ADTELLIGENT = false;
+export const ADTELLIGENT_AID = 0;
+export const GAM_NETWORK_CALLS = false;
+export const ENABLE_REPORTING = false;

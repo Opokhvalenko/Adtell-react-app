@@ -42,3 +42,6 @@ build
 # OS/Editor extras (доповнення) 
 *.orig
 *.rej
+
+coverage/
+reports/

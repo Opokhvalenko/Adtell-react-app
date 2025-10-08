@@ -64,8 +64,23 @@ export default function StatsPage() {
 	}
 
 	return (
-		<div className="space-y-4">
-			<h1 className="text-2xl font-semibold">Ads Analytics</h1>
+		<div className="space-y-8">
+			{/* Header section */}
+			<div className="text-center py-8">
+				<div className="inline-flex items-center gap-4 mb-4">
+					<div className="w-16 h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+						<span className="text-white text-2xl">📊</span>
+					</div>
+					<div className="text-left">
+						<h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 dark:from-gray-100 dark:via-blue-100 dark:to-purple-100 bg-clip-text text-transparent">
+							Ads Analytics
+						</h1>
+						<p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
+							Comprehensive advertising performance metrics and insights
+						</p>
+					</div>
+				</div>
+			</div>
 
 			<Controls
 				from={from}

@@ -1,14 +1,57 @@
+export {};
+
 declare global {
-	const __BUILD_TIME__: string;
+	type AdSlotType = "inline" | "banner" | "sidebar";
+	type SizeTuple = readonly [number, number];
+	type SizeStr = `${number}x${number}`;
+
+	interface AdsRegistryItem {
+		sizes: SizeTuple[];
+		type?: AdSlotType;
+	}
+
+	type AdsEvt = {
+		ts?: number;
+		id?: string;
+		slot?: string;
+		adUnitCode?: string;
+		adapter?: string;
+		bidder?: string;
+		event?: string;
+		message?: string;
+		[key: string]: unknown;
+	};
+
+	interface AdsModule {
+		uid?: string;
+		registry?: Record<string, AdsRegistryItem>;
+
+		initAds?: () => void | Promise<void>;
+		requestAndDisplay?: (adUnits?: unknown) => void | Promise<void>;
+		refreshAds?: (codes?: string[]) => void | Promise<void>;
+		mount?: (
+			id: string,
+			sizes: Array<SizeTuple | SizeStr>,
+			type: AdSlotType,
+			el: HTMLElement,
+		) => void | Promise<void>;
+		unmount?: (id: string) => void | Promise<void>;
+	}
 
 	interface Window {
+		__ads?: AdsModule;
+		__adslog?: AdsEvt[];
+
 		pbjs?: unknown;
 		googletag?: unknown;
-		__adslog?: Array<{ ts: number; type: string; payload: unknown }>;
-		__ads?: {
-			uid?: string;
-			endpoint?: string;
-		};
+
+		requestIdleCallback?(
+			cb: (d: { didTimeout: boolean; timeRemaining: () => number }) => void,
+			opts?: { timeout?: number },
+		): number;
+		cancelIdleCallback?(id: number): void;
 	}
+
+	/** build-часова константа (vite define) */
+	const __BUILD_TIME__: string;
 }
-export {};

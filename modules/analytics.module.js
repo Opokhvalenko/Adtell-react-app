@@ -1,10 +1,11 @@
+import { ANALYTICS_ENDPOINT as ENDPOINT } from "@/config/analytics";
+
 const Q = [];
 let T = null;
 let backoffMs = 0;
 
 const FLUSH_MS = 1500;
 const BATCH_MAX = 50;
-const ENDPOINT = "/api/report";
 const SOFT_PAYLOAD_LIMIT = 60 * 1024;
 let ctx = {};
 
@@ -19,7 +20,6 @@ function splitBySize(events, limitBytes) {
 	const chunks = [];
 	let cur = [];
 	let curBytes = 2;
-
 	for (const e of events) {
 		const eBytes = sizeOf(e) + (cur.length ? 1 : 0);
 		if (cur.length >= BATCH_MAX || curBytes + eBytes > limitBytes) {
@@ -39,7 +39,7 @@ function scheduleFlush() {
 	const delay = Math.max(FLUSH_MS, backoffMs);
 	T = setTimeout(() => {
 		T = null;
-		flushNow();
+		void flushNow();
 	}, delay);
 }
 
@@ -64,12 +64,13 @@ async function flushNow() {
 		}
 
 		try {
-			await fetch(ENDPOINT, {
+			const res = await fetch(ENDPOINT, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: payload,
 				keepalive: true,
 			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			backoffMs = 0;
 		} catch {
 			Q.unshift(...batch);
@@ -80,94 +81,6 @@ async function flushNow() {
 	}
 
 	if (Q.length) scheduleFlush();
-}
-
-export function initAnalytics(options = {}) {
-	const { enabled = true, context = {} } = options;
-	if (!enabled) return;
-	ctx = { ...context };
-
-	emit({ event: "pageLoad" });
-
-	addEventListener(
-		"pagehide",
-		() => {
-			void flushNow();
-		},
-		{ capture: true },
-	);
-	addEventListener("visibilitychange", () => {
-		if (document.visibilityState === "hidden") {
-			void flushNow();
-		}
-	});
-	addEventListener(
-		"beforeunload",
-		() => {
-			void flushNow();
-		},
-		{ capture: true },
-	);
-	addEventListener("online", () => {
-		scheduleFlush();
-	});
-
-	window.__analytics = {
-		adModuleLoad(extra = {}) {
-			emit({ event: "adModuleLoad", ...extra });
-		},
-		auctionInit(extra = {}) {
-			emit({ event: "auctionInit", ...extra });
-		},
-		auctionEnd(extra = {}) {
-			emit({ event: "auctionEnd", ...extra });
-		},
-		bidRequested(extra = {}) {
-			emit({ event: "bidRequested", ...extra });
-		},
-		bidResponse(extra = {}) {
-			emit({ event: "bidResponse", ...extra });
-		},
-		bidWon(extra = {}) {
-			emit({ event: "bidWon", wins: 1, ...extra });
-		},
-	};
-
-	const pb = window.pbjs;
-	if (pb?.onEvent) {
-		pb.onEvent("auctionInit", (d) =>
-			emit({ event: "auctionInit", adapter: "prebid", ...pickAuction(d) }),
-		);
-		pb.onEvent("auctionEnd", (d) =>
-			emit({ event: "auctionEnd", adapter: "prebid", ...pickAuction(d) }),
-		);
-		pb.onEvent("bidRequested", (d) =>
-			emit({ event: "bidRequested", adapter: "prebid", ...pickBidReq(d) }),
-		);
-		pb.onEvent("bidResponse", (d) =>
-			emit({
-				event: "bidResponse",
-				adapter: "prebid",
-				cpm: d?.cpm,
-				adUnitCode: d?.adUnitCode,
-				bidder: d?.bidder,
-				creativeId: d?.creativeId,
-				adomain: d?.meta?.advertiserDomains || [],
-			}),
-		);
-		pb.onEvent("bidWon", (d) =>
-			emit({
-				event: "bidWon",
-				adapter: "prebid",
-				cpm: d?.cpm,
-				adUnitCode: d?.adUnitCode,
-				bidder: d?.bidder,
-				creativeId: d?.creativeId,
-				adomain: d?.meta?.advertiserDomains || [],
-				wins: 1,
-			}),
-		);
-	}
 }
 
 function emit(ev) {
@@ -182,12 +95,16 @@ function emit(ev) {
 		cur: "USD",
 		...ctx,
 	};
-	Q.push({ ...base, ...ev });
-	if (Q.length >= BATCH_MAX) {
-		void flushNow();
-	} else {
-		scheduleFlush();
+
+	if (ev.event === "auctionInit") {
+		window.__analytics = window.__analytics || {};
+		window.__analytics.auctionCount =
+			(window.__analytics.auctionCount || 0) + 1;
 	}
+
+	Q.push({ ...base, ...ev });
+	if (Q.length >= BATCH_MAX) void flushNow();
+	else scheduleFlush();
 }
 
 function getUid() {
@@ -220,11 +137,177 @@ function getSid() {
 		return null;
 	}
 }
-function pickAuction(d) {
-	return { auctionId: d?.auctionId, timeout: d?.timeout };
+
+function collectAllBidsFromResponses(responsesObj) {
+	const arr = Object.values(responsesObj || {});
+	return arr.flatMap((v) => (Array.isArray(v?.bids) ? v.bids : []));
 }
-function pickBidReq(d) {
-	const code =
-		(Array.isArray(d?.bids) && d.bids[0]?.adUnitCode) || d?.adUnitCode;
-	return { adUnitCode: code };
+
+export function initAnalytics(options = {}) {
+	const { enabled = true, context = {} } = options;
+	if (!enabled) return;
+	ctx = { ...context };
+
+	emit({ event: "pageLoad" });
+
+	addEventListener(
+		"pagehide",
+		() => {
+			void flushNow();
+		},
+		{ capture: true },
+	);
+	addEventListener("visibilitychange", () => {
+		if (document.visibilityState === "hidden") void flushNow();
+	});
+	addEventListener(
+		"beforeunload",
+		() => {
+			void flushNow();
+		},
+		{ capture: true },
+	);
+	addEventListener("online", () => {
+		scheduleFlush();
+	});
+
+	window.__analytics = {
+		adModuleLoad(extra = {}) {
+			emit({ event: "adModuleLoad", ...extra });
+		},
+		auctionInit(extra = {}) {
+			emit({ event: "auctionInit", ...extra });
+		},
+		auctionEnd(extra = {}) {
+			emit({ event: "auctionEnd", ...extra });
+		},
+		bidRequested(extra = {}) {
+			emit({ event: "bidRequested", ...extra });
+		},
+		bidResponse(extra = {}) {
+			emit({ event: "bidResponse", ...extra });
+		},
+		bidWon(extra = {}) {
+			emit({ event: "bidWon", wins: 1, ...extra });
+		},
+
+		prebidStatus() {
+			const pb = window.pbjs;
+			const responses = pb?.getBidResponses?.() || {};
+			return {
+				loaded: !!pb?.libLoaded,
+				version: pb?.version,
+				config: pb?.getConfig?.(),
+				adUnits: pb?.getAdUnits?.(),
+				bidResponses: responses,
+				highestCpmBids: pb?.getHighestCpmBids?.(),
+				allBidsFlat: collectAllBidsFromResponses(responses),
+			};
+		},
+
+		getAuctionMetrics(auctionId) {
+			const pb = window.pbjs;
+			if (!pb?.getBidResponses) return null;
+			const allBids = collectAllBidsFromResponses(pb.getBidResponses());
+			const auctionBids = allBids.filter((b) => b.auctionId === auctionId);
+			return {
+				auctionId,
+				totalBids: auctionBids.length,
+				winningBids: auctionBids.filter((b) => b.status === "rendered").length,
+				averageCpm: auctionBids.length
+					? allBids.reduce((s, b) => s + (b.cpm || 0), 0) / auctionBids.length
+					: 0,
+				highestCpm: auctionBids.reduce((m, b) => Math.max(m, b.cpm || 0), 0),
+				bidderCount: new Set(auctionBids.map((b) => b.bidder)).size,
+			};
+		},
+
+		testAuction(adUnitCodes = []) {
+			const pb = window.pbjs;
+			if (!pb?.requestBids) {
+				console.warn("[analytics] Prebid.js not available for testing");
+				return;
+			}
+			emit({ event: "testAuction", adUnitCodes });
+			pb.que.push(() => {
+				pb.requestBids({
+					adUnitCodes,
+					timeout: 3000,
+					bidsBackHandler: () => {
+						const flat = collectAllBidsFromResponses(pb.getBidResponses());
+						emit({
+							event: "testAuctionComplete",
+							adUnitCodes,
+							bidCount: flat.length,
+							bids: flat,
+						});
+					},
+				});
+			});
+		},
+
+		getStats() {
+			const pb = window.pbjs;
+			if (!pb) return null;
+			const allBids = collectAllBidsFromResponses(pb.getBidResponses?.() || {});
+			return {
+				totalAuctions: window.__analytics?.auctionCount || 0,
+				totalBids: allBids.length,
+				winningBids: allBids.filter((b) => b.status === "rendered").length,
+				averageCpm: allBids.length
+					? allBids.reduce((s, b) => s + (b.cpm || 0), 0) / allBids.length
+					: 0,
+				bidderStats: allBids.reduce((acc, b) => {
+					acc[b.bidder] = (acc[b.bidder] || 0) + 1;
+					return acc;
+				}, {}),
+				adUnitStats: allBids.reduce((acc, b) => {
+					acc[b.adUnitCode] = (acc[b.adUnitCode] || 0) + 1;
+					return acc;
+				}, {}),
+			};
+		},
+	};
+
+	setupPrebidAnalytics();
+}
+
+function setupPrebidAnalytics() {
+	const checkPrebid = () => {
+		const pb = window.pbjs;
+		if (!pb?.onEvent) {
+			setTimeout(checkPrebid, 100);
+			return;
+		}
+
+		pb.que.push(() => {
+			const on = (name) =>
+				pb.onEvent(name, (data) => {
+					emit({
+						event: name,
+						adapter: "prebid",
+						...(data || {}),
+						timestamp: data?.timestamp || Date.now(),
+					});
+				});
+
+			[
+				"auctionInit",
+				"auctionEnd",
+				"bidRequested",
+				"bidResponse",
+				"noBid",
+				"bidderDone",
+				"bidderError",
+				"bidTimeout",
+				"setTargeting",
+				"bidWon",
+				"adRenderSucceeded",
+				"adRenderFailed",
+			].forEach(on);
+
+			console.log("[analytics] Prebid.js events configured");
+		});
+	};
+	checkPrebid();
 }

@@ -5,31 +5,34 @@
 		"useDefineForClassFields": true,
 		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"module": "ESNext",
-		"skipLibCheck": true,
 		"moduleResolution": "bundler",
+		"skipLibCheck": true,
+
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
 		"moduleDetection": "force",
 		"noEmit": true,
 		"jsx": "react-jsx",
+
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
-		"erasableSyntaxOnly": true,
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true,
+
 		"resolveJsonModule": true,
 		"baseUrl": ".",
-		"paths": { "@/*": ["./src/*"], "modules/*": ["./public/modules/*"] },
+		"paths": {
+			"@/*": ["./src/*"],
+			"modules/*": ["./public/modules/*"]
+		},
+
 		"allowJs": true,
-		"checkJs": false
+		"checkJs": false,
+
+		"types": ["vite/client", "react", "react-dom"],
+		"typeRoots": ["./node_modules/@types", "./src"]
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.tsx",
-		"src/**/*.d.ts",
-		"modules/**/*.js",
-		"public/modules/**/*.js"
-	],
+	"include": ["src", "src/vite-env.d.ts", "modules", "public/modules"],
 	"exclude": ["node_modules", "dist"]
 }

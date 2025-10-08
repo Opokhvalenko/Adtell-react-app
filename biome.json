@@ -17,7 +17,15 @@
 			"!.vite",
 			"!.cache",
 			"!src/tailwind.css",
-			"!public/prebid"
+			"!public/prebid",
+			"!src/index.css",
+			"dist/",
+			"!build/",
+			"!public/assets",
+			"!src/tailwind.css",
+			"!**/*.min.css",
+			"!public/assets",
+			"!src/ssr/embed.css"
 		],
 		"ignoreUnknown": false
 	},

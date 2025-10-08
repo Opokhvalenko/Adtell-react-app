@@ -1,4 +1,3 @@
-// backend shape (як приходить з API)
 export type RawFeedItem = {
 	id: string;
 	title: string;
@@ -13,7 +12,6 @@ export type RawFeedResponse = {
 	title?: string;
 };
 
-// нормалізований shape для UI
 export type FeedItem = {
 	id: string;
 	title: string;
