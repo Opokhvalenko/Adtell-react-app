@@ -1,10 +1,10 @@
 import { createStore } from "../lib/zustand";
 
 const API_URL = import.meta.env.DEV
-	? ""
+	? "" // у dev підемо через Vite proxy відносними шляхами
 	: (
 			(import.meta.env.VITE_API_URL as string | undefined) ||
-			"http://127.0.0.1:3000"
+			"https://addtell-backend.onrender.com"
 		).replace(/\/$/, "");
 
 type Credentials = { email: string; password: string };
@@ -28,7 +28,8 @@ export const useAuth = createStore<AuthState>(
 
 		hydrate: async () => {
 			try {
-				const res = await fetch(`${API_URL}/api/auth/me`, {
+				const res = await fetch(`${API_URL}/auth/me`, {
+					// ⬅️ без /api
 					credentials: "include",
 				});
 				if (res.ok) {
@@ -45,7 +46,8 @@ export const useAuth = createStore<AuthState>(
 		},
 
 		login: async (creds) => {
-			const r = await fetch(`${API_URL}/api/auth/login`, {
+			const r = await fetch(`${API_URL}/auth/login`, {
+				// ⬅️
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				credentials: "include",
@@ -53,7 +55,8 @@ export const useAuth = createStore<AuthState>(
 			});
 			if (!r.ok) throw new Error(await r.text());
 
-			const me = await fetch(`${API_URL}/api/auth/me`, {
+			const me = await fetch(`${API_URL}/auth/me`, {
+				// ⬅️
 				credentials: "include",
 			});
 			if (me.ok) {
@@ -65,7 +68,8 @@ export const useAuth = createStore<AuthState>(
 		},
 
 		register: async (creds) => {
-			const r = await fetch(`${API_URL}/api/auth/register`, {
+			const r = await fetch(`${API_URL}/auth/register`, {
+				// ⬅️
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				credentials: "include",
@@ -73,7 +77,8 @@ export const useAuth = createStore<AuthState>(
 			});
 			if (!r.ok) throw new Error(await r.text());
 
-			const me = await fetch(`${API_URL}/api/auth/me`, {
+			const me = await fetch(`${API_URL}/auth/me`, {
+				// ⬅️
 				credentials: "include",
 			});
 			if (me.ok) {
@@ -85,7 +90,8 @@ export const useAuth = createStore<AuthState>(
 		},
 
 		logout: async () => {
-			await fetch(`${API_URL}/api/auth/logout`, {
+			await fetch(`${API_URL}/auth/logout`, {
+				// ⬅️
 				method: "POST",
 				credentials: "include",
 			}).catch(() => {});

@@ -28,7 +28,7 @@ export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
 	if (q.adUnitCode) params.set("adUnitCode", q.adUnitCode);
 	if (q.creativeId) params.set("creativeId", q.creativeId);
 
-	const url = `${API_BASE || ""}/api/stats?${params.toString()}`;
+	const url = `${API_BASE || ""}/stats?${params.toString()}`;
 
 	try {
 		const res = await fetch(url);
