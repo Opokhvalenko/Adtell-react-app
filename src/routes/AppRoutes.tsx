@@ -138,7 +138,7 @@ const routes = [
 				),
 			},
 
-			// Debug
+			// Debug (умовно)
 			...(ADS_DEBUG ? [{ path: "ads-debug", element: <AdsDebugPage /> }] : []),
 		],
 	},

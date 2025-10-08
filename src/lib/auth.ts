@@ -12,7 +12,7 @@ async function jsonOrText(res: Response) {
 }
 
 export async function apiLogin(email: string, password: string) {
-	const res = await fetch(`${API_BASE}/auth/login`, {
+	const res = await fetch(`${API_BASE}/api/auth/login`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		credentials: "include",
@@ -24,7 +24,7 @@ export async function apiLogin(email: string, password: string) {
 }
 
 export async function apiRegister(email: string, password: string) {
-	const res = await fetch(`${API_BASE}/auth/register`, {
+	const res = await fetch(`${API_BASE}/api/auth/register`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		credentials: "include",
