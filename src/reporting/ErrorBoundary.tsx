@@ -1,5 +1,5 @@
 import React from "react";
-import { reportError } from "./errors";
+import { reportError } from "@/reporting/errors-lazy";
 
 export class ErrorBoundary extends React.Component<
 	{ children: React.ReactNode },

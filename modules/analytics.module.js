@@ -311,3 +311,7 @@ function setupPrebidAnalytics() {
 	};
 	checkPrebid();
 }
+
+export function track(name, payload = {}) {
+	emit({ event: String(name), ...payload });
+}
