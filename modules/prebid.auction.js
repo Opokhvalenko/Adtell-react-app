@@ -773,3 +773,7 @@ export function unmount(domId) {
 		w.__ads.rendered[domId] = false;
 	} catch {}
 }
+
+export async function mount() {
+	await initAds();
+}

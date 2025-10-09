@@ -1,4 +1,4 @@
-import { reportError } from "@/reporting/errors";
+import { reportError } from "@/reporting/errors-lazy";
 
 export function ensureAdUid(): string {
 	const KEY = "ad_uid";

@@ -1,18 +1,24 @@
+import { ANALYTICS_STATS } from "@/config/analytics";
 import { API_BASE } from "@/lib/apiBase";
-import { reportError } from "@/reporting/errors";
+import { reportError } from "@/reporting/errors-lazy";
 import type { MetricKey, StatRow } from "./types";
 
 export interface StatsQuery {
-	from?: string; // YYYY-MM-DD
-	to?: string; // YYYY-MM-DD
-	groupBy?: string; // "day,event,adapter"
-	metrics?: MetricKey[]; // перелік метрик
-	limit?: number; // серверна пагінація (опціонально)
-	offset?: number; // серверна пагінація (опціонально)
-	event?: string; // фільтр за івентом
+	from?: string;
+	to?: string;
+	groupBy?: string;
+	metrics?: MetricKey[];
+	limit?: number;
+	offset?: number;
+	event?: string;
 	adapter?: string;
 	adUnitCode?: string;
 	creativeId?: string;
+}
+
+function joinUrl(base: string, path: string) {
+	if (/^https?:\/\//i.test(path)) return path; // дали повний URL у env
+	return base.replace(/\/$/, "") + (path.startsWith("/") ? path : `/${path}`);
 }
 
 export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
@@ -28,12 +34,11 @@ export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
 	if (q.adUnitCode) params.set("adUnitCode", q.adUnitCode);
 	if (q.creativeId) params.set("creativeId", q.creativeId);
 
-	const url = `${API_BASE || ""}/api/stats?${params.toString()}`;
+	const url = `${joinUrl(API_BASE, ANALYTICS_STATS)}?${params.toString()}`;
 
 	try {
-		const res = await fetch(url);
+		const res = await fetch(url, { credentials: "include" });
 		if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
-
 		const ct = res.headers.get("content-type") || "";
 		if (!ct.includes("application/json")) {
 			const preview = (await res.text()).slice(0, 200);
@@ -41,7 +46,6 @@ export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
 				`Expected JSON, got "${ct}" [${res.status}] preview: ${preview}`,
 			);
 		}
-
 		return (await res.json()) as StatRow[];
 	} catch (err) {
 		reportError(err, { where: "fetchStats", url });
