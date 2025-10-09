@@ -10,6 +10,8 @@
 		"tw:embed": "tailwindcss -c tailwind.config.js -i ./src/ssr/embed.css -o ./public/assets/tw-embed.css --minify",
 		"dev": "vite",
 		"build": "npm run tw:build && vite build",
+		"clean": "rimraf dist",
+		"rebuild": "npm run clean && npm run build",
 		"preview": "vite preview",
 		"lint": "biome check --diagnostic-level=error .",
 		"biome:check": "biome check --diagnostic-level=error .",
