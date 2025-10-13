@@ -2,6 +2,7 @@ import { ANALYTICS_STATS } from "@/config/analytics";
 import { API_BASE } from "@/lib/apiBase";
 import { reportError } from "@/reporting/errors-lazy";
 import type { MetricKey, StatRow } from "./types";
+import { buildStatsFromPrebidLog } from "./utils/fromPrebidLog";
 
 export interface StatsQuery {
 	from?: string;
@@ -17,8 +18,23 @@ export interface StatsQuery {
 }
 
 function joinUrl(base: string, path: string) {
-	if (/^https?:\/\//i.test(path)) return path; // дали повний URL у env
+	if (/^https?:\/\//i.test(path)) return path;
 	return base.replace(/\/$/, "") + (path.startsWith("/") ? path : `/${path}`);
+}
+
+function isStatRowArray(v: unknown): v is StatRow[] {
+	return Array.isArray(v) && v.every((x) => !!x && typeof x === "object");
+}
+
+function extractRows(payload: unknown): StatRow[] | null {
+	if (isStatRowArray(payload)) return payload;
+
+	if (payload && typeof payload === "object") {
+		const obj = payload as { data?: unknown; rows?: unknown };
+		if (isStatRowArray(obj.data)) return obj.data;
+		if (isStatRowArray(obj.rows)) return obj.rows;
+	}
+	return null;
 }
 
 export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
@@ -38,17 +54,22 @@ export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
 
 	try {
 		const res = await fetch(url, { credentials: "include" });
-		if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
-		const ct = res.headers.get("content-type") || "";
-		if (!ct.includes("application/json")) {
-			const preview = (await res.text()).slice(0, 200);
-			throw new Error(
-				`Expected JSON, got "${ct}" [${res.status}] preview: ${preview}`,
-			);
+		if (res.ok) {
+			const ct = res.headers.get("content-type") ?? "";
+			if (ct.includes("application/json")) {
+				const data = (await res.json()) as unknown;
+				const rows = extractRows(data);
+				if (rows?.length) return rows;
+			}
 		}
-		return (await res.json()) as StatRow[];
 	} catch (err) {
-		reportError(err, { where: "fetchStats", url });
+		reportError(err, { where: "fetchStats(server)", url });
+	}
+
+	try {
+		return buildStatsFromPrebidLog(q);
+	} catch (err) {
+		reportError(err, { where: "fetchStats(fallback)" });
 		throw err;
 	}
 }

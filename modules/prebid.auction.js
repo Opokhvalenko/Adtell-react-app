@@ -1,9 +1,3 @@
-// modules/prebid.auction.js
-// Prebid + (опційно) GAM із Bidmatic та Adtelligent.
-// Контейнери на сторінці: #ad-top-adtelligent, #ad-left-adtelligent,
-// #ad-right-bidmatic, #ad-right-beautiful, #ad-mobile-bidmatic.
-// Якщо немає ставок — показуємо house-креатив (SVG).
-
 import {
 	ADS_DEBUG,
 	BIDMATIC_SOURCE,
@@ -37,11 +31,9 @@ const GPT_SAFE_FALLBACK_DELAY = BIDDER_TIMEOUT + 1200;
 const w = window;
 w.__ads = w.__ads || {};
 w.__adslog = w.__adslog || [];
-w.__ads.rendered = w.__ads.rendered || {}; // { [adUnitCode]: boolean }
-w.__ads.addedCodes = w.__ads.addedCodes || new Set();
-w.__ads.adaptersRegistered = w.__ads.adaptersRegistered || new Set();
-w.__ads.pbjsConfigured = w.__ads.pbjsConfigured || false;
-w.__ads.pbjsInitPromise = w.__ads.pbjsInitPromise || null;
+w.__ads.rendered = w.__ads.rendered || {}; // { [id]: boolean }
+w.__ads.registeredBidders = w.__ads.registeredBidders || new Set();
+w.__ads.alias = w.__ads.alias || {}; // e.g. { bidmatic: 'adtelligent' }
 
 /* ----------------------------- utils ----------------------------- */
 
@@ -56,14 +48,6 @@ function loadScript(src, id) {
 		s.onerror = (e) => reject(e);
 		document.head.appendChild(s);
 	});
-}
-
-function debounce(fn, ms) {
-	let t;
-	return (...a) => {
-		clearTimeout(t);
-		t = setTimeout(() => fn(...a), ms);
-	};
 }
 
 function pickBestSize(containerW, sizes) {
@@ -135,16 +119,6 @@ function ensureContainers() {
 	};
 }
 
-function hasAny(s) {
-	return !!(
-		s.topAdtelligent ||
-		s.leftAdtelligent ||
-		s.rightBidmatic ||
-		s.rightBeautiful ||
-		s.mobileBidmatic
-	);
-}
-
 /* ---------------------- house creatives (images) ---------------------- */
 
 function brandFor(unitId) {
@@ -181,7 +155,9 @@ function renderHouse(unitId, size) {
 	setSlotSize(el, [W, H]);
 	el.innerHTML = "";
 	const img = document.createElement("img");
-	img.src = `data:image/svg+xml;utf8,${encodeURIComponent(houseSVG(brandFor(unitId), W, H))}`;
+	img.src = `data:image/svg+xml;utf8,${encodeURIComponent(
+		houseSVG(brandFor(unitId), W, H),
+	)}`;
 	img.alt = `${brandFor(unitId)} ${W}x${H}`;
 	img.width = W;
 	img.height = H;
@@ -221,171 +197,225 @@ const allowSize = (sizes) =>
 		BIDMATIC_ALLOWED.some(([aw, ah]) => aw === w && ah === h),
 	);
 
-async function registerAdaptersOnce() {
-	// Bidmatic
-	if (ENABLE_BIDMATIC && !w.__ads.adaptersRegistered.has("bidmatic")) {
-		try {
-			const mod = await import("/modules/bidmaticBidAdapter.js");
-			const spec =
-				mod.bidmaticBidAdapter || mod.default || mod.adapter || mod.bidderSpec;
-			if (spec && !w.pbjs?.bidderRegistry?.bidmatic) {
-				w.pbjs.registerBidder?.(spec);
-				w.__ads.adaptersRegistered.add("bidmatic");
-			}
-		} catch (e) {
-			console.warn("[Prebid] Bidmatic adapter load failed:", e);
+let _prebidReady = false;
+
+// вибираємо spec з будь-якого типу експорту
+function pickSpec(mod, names = []) {
+	if (!mod) return null;
+	const candidates = [
+		mod.spec,
+		mod.default,
+		mod.bidderSpec,
+		...names.map((n) => mod[n]),
+		...Object.values(mod || {}),
+	];
+	for (const v of candidates) {
+		if (
+			v &&
+			typeof v === "object" &&
+			typeof v.code === "string" &&
+			(typeof v.isBidRequestValid === "function" ||
+				typeof v.buildRequests === "function")
+		) {
+			return v;
 		}
 	}
-	// Adtelligent (можна керувати через w.__ads.config.ENABLE_ADTELLIGENT)
-	const enableAdt =
-		typeof w.__ads?.config?.ENABLE_ADTELLIGENT !== "undefined"
-			? !!w.__ads.config.ENABLE_ADTELLIGENT
-			: true;
-	if (enableAdt && !w.__ads.adaptersRegistered.has("adtelligent")) {
-		try {
-			const mod = await import("/modules/adtelligentBidAdapter.js");
-			const spec =
-				mod.adtelligentBidAdapter ||
-				mod.default ||
-				mod.adapter ||
-				mod.bidderSpec;
-			if (spec && !w.pbjs?.bidderRegistry?.adtelligent) {
-				w.pbjs.registerBidder?.(spec);
-				w.__ads.adaptersRegistered.add("adtelligent");
-			}
-		} catch (e) {
-			console.warn("[Prebid] Adtelligent adapter load failed:", e);
-		}
-	}
+	return null;
 }
 
 async function ensurePrebid() {
-	if (w.__ads.pbjsInitPromise) return w.__ads.pbjsInitPromise;
+	if (_prebidReady || w.__ads.pbjsLoading) return;
+	w.__ads.pbjsLoading = true;
 	w.pbjs = w.pbjs || { que: [] };
 
-	w.__ads.pbjsInitPromise = (async () => {
-		try {
-			await loadScript(PREBID_SRC_LOCAL, "pbjs-lib");
-		} catch {
-			await loadScript(PREBID_SRC_CDN, "pbjs-lib");
-		}
+	// 1) підключаємо Prebid
+	try {
+		await loadScript(PREBID_SRC_LOCAL, "pbjs-lib");
+	} catch {
+		await loadScript(PREBID_SRC_CDN, "pbjs-lib");
+	}
 
-		await new Promise((resolve) => {
-			w.pbjs.que.push(() => {
-				if (!w.__ads.pbjsConfigured) {
-					w.pbjs.setConfig?.({
-						debug: !!ADS_DEBUG,
-						bidderTimeout: BIDDER_TIMEOUT,
-						enableSendAllBids: true,
-						consentManagement: {
-							gdpr: {
-								cmpApi: "tcfv2",
-								timeout: 8000,
-								allowAuctionWithoutConsent: false,
-							},
-							usp: { cmpApi: "usp", timeout: 1000 },
-							gpp: { timeout: 1000 },
-						},
-						coppa: !!w.__ads?.config?.coppa,
-						floors: w.__ads?.config?.floors ?? {
-							enforcement: { enforceFloors: true },
-							data: {
-								currency: "USD",
-								schema: { fields: ["mediaType", "size"] },
-								values: {
-									"banner|300x250": 0.01,
-									"banner|300x600": 0.02,
-									"banner|728x90": 0.01,
-									"banner|970x90": 0.02,
-									"banner|*": 0.005,
-								},
-							},
-						},
-						userSync: {
-							iframeEnabled: true,
-							filterSettings: { iframe: { bidders: "*", filter: "include" } },
-							syncDelay: 1000,
-						},
-						activityControls: { enabled: false },
-						sizeConfig: [
-							{
-								label: "desktop",
-								mediaQuery: "(min-width:1024px)",
-								sizesSupported: [...TOP_SIZES, ...SIDE_SIZES],
-							},
-							{
-								label: "tablet",
-								mediaQuery: "(min-width:768px) and (max-width:1023px)",
-								sizesSupported: [
-									[728, 90],
-									[468, 60],
-									[300, 250],
-								],
-							},
-							{
-								label: "mobile",
-								mediaQuery: "(max-width:767px)",
-								sizesSupported: [
-									[320, 50],
-									[300, 250],
-								],
-							},
-						],
-						schain: {
-							ver: "1.0",
-							complete: 1,
-							nodes: [
-								{
-									asi: location.hostname || "localhost",
-									sid: "pub-0001",
-									hp: 1,
-								},
-							],
-						},
-						ortb2: {
-							site: {
-								domain: location.hostname || "localhost",
-								page: location.href,
-								ext: {
-									data: {
-										section: location.pathname.replace(/\//g, "_") || "home",
-									},
-								},
-							},
-						},
-					});
-					w.pbjs.setConfig?.({ adtelligent: { chunkSize: 1 } });
-					w.__ads.pbjsConfigured = true;
+	// 2) імпортуємо адаптери
+	const promises = [];
+
+	if (ENABLE_BIDMATIC) {
+		promises.push(
+			import("/modules/bidmaticBidAdapter.js")
+				.then((m) => ({
+					name: "bidmatic",
+					spec: pickSpec(m, ["bidmaticBidAdapter"]),
+				}))
+				.catch((e) => ({ name: "bidmatic", error: e })),
+		);
+	}
+	promises.push(
+		import("/modules/adtelligentBidAdapter.js")
+			.then((m) => ({
+				name: "adtelligent",
+				spec: pickSpec(m, ["adtelligentBidAdapter"]),
+			}))
+			.catch((e) => ({ name: "adtelligent", error: e })),
+	);
+	promises.push(
+		import("/modules/pokhvalenkoBidAdapter.js")
+			.then((m) => ({
+				name: "pokhvalenko",
+				spec: pickSpec(m, ["pokhvalenkoBidAdapter"]),
+			}))
+			.catch((e) => ({ name: "pokhvalenko", error: e })),
+	);
+
+	const loaded = await Promise.all(promises);
+
+	// 3) реєстрація / позначення доступних бідерів (+ alias fallback)
+	w.pbjs.que.push(() => {
+		const mark = (code) => w.__ads.registeredBidders.add(code);
+
+		let adtelligentRegistered = false;
+
+		loaded.forEach(({ name, spec, error }) => {
+			if (error) {
+				console.warn(`[Prebid] ${name} adapter load failed:`, error);
+			}
+			try {
+				if (spec && typeof w.pbjs.registerBidder === "function") {
+					w.pbjs.registerBidder(spec);
+					mark(spec.code || name);
+					if (name === "adtelligent") adtelligentRegistered = true;
+					if (ADS_DEBUG) console.log(`[Prebid] ${name} registered`);
+				} else {
+					if (name === "adtelligent") {
+						adtelligentRegistered = true;
+						mark("adtelligent");
+						console.warn(
+							"[Prebid] adtelligent register skipped (no spec) — assuming bundled/self-registered",
+						);
+					} else {
+						console.warn(
+							`[Prebid] ${name} register skipped (no spec) — bidder won't be used`,
+						);
+					}
 				}
-				resolve();
-			});
+			} catch (e) {
+				console.warn(`[Prebid] ${name} register error:`, e);
+			}
 		});
 
-		await registerAdaptersOnce();
-
-		if (!w.__ads.bpBound) {
-			w.__ads.bpBound = true;
-			const active = () =>
-				window.innerWidth >= 1024
-					? "desktop"
-					: window.innerWidth >= 768
-						? "tablet"
-						: "mobile";
-			w.__ads.lastBp = active();
-			window.addEventListener(
-				"resize",
-				debounce(() => {
-					const cur = active();
-					if (cur !== w.__ads.lastBp) {
-						w.__ads.lastBp = cur;
-						refreshAds();
-					}
-				}, 250),
-			);
+		const isReg = (code) => w.__ads.registeredBidders.has(code);
+		const alias = (from, to) => {
+			if (
+				!isReg(from) &&
+				isReg(to) &&
+				typeof w.pbjs.aliasBidder === "function"
+			) {
+				try {
+					w.pbjs.aliasBidder(to, from);
+					w.__ads.alias[from] = to;
+					mark(from);
+					console.info(`[Prebid] alias '${from}' -> '${to}'`);
+				} catch (e) {
+					console.warn(`[Prebid] alias failed '${from}' -> '${to}'`, e);
+				}
+			}
+		};
+		if (adtelligentRegistered) {
+			alias("bidmatic", "adtelligent");
+			alias("pokhvalenko", "adtelligent");
 		}
-	})();
 
-	return w.__ads.pbjsInitPromise;
+		const hasTCF = typeof w.__tcfapi === "function";
+		const hasUSP = typeof w.__uspapi === "function";
+		const hasGPP = typeof w.__gpp === "function";
+		const isProd = (import.meta?.env?.MODE || "development") === "production";
+
+		const consentConfig =
+			hasTCF || hasUSP || hasGPP
+				? {
+						...(hasTCF && {
+							gdpr: {
+								cmpApi: "iab",
+								timeout: 8000,
+								allowAuctionWithoutConsent: !isProd,
+							},
+						}),
+						...(hasUSP && { usp: { cmpApi: "iab", timeout: 1000 } }),
+						...(hasGPP && { gpp: { cmpApi: "iab", timeout: 1000 } }),
+					}
+				: undefined;
+
+		w.pbjs.setConfig?.({
+			debug: !!ADS_DEBUG,
+			bidderTimeout: BIDDER_TIMEOUT,
+			enableSendAllBids: true,
+			...(consentConfig ? { consentManagement: consentConfig } : {}),
+			coppa: !!w.__ads?.config?.coppa,
+			floors: w.__ads?.config?.floors ?? {
+				enforcement: { enforceFloors: true },
+				data: {
+					currency: "USD",
+					schema: { fields: ["mediaType", "size"] },
+					values: {
+						"banner|300x250": 0.01,
+						"banner|300x600": 0.02,
+						"banner|728x90": 0.01,
+						"banner|970x90": 0.02,
+						"banner|*": 0.005,
+					},
+				},
+			},
+			userSync: {
+				iframeEnabled: true,
+				filterSettings: { iframe: { bidders: "*", filter: "include" } },
+				syncDelay: 1000,
+			},
+			activityControls: { enabled: false },
+			sizeConfig: [
+				{
+					label: "desktop",
+					mediaQuery: "(min-width:1024px)",
+					sizesSupported: [...TOP_SIZES, ...SIDE_SIZES],
+				},
+				{
+					label: "tablet",
+					mediaQuery: "(min-width:768px) and (max-width:1023px)",
+					sizesSupported: [
+						[728, 90],
+						[468, 60],
+						[300, 250],
+					],
+				},
+				{
+					label: "mobile",
+					mediaQuery: "(max-width:767px)",
+					sizesSupported: [
+						[320, 50],
+						[300, 250],
+					],
+				},
+			],
+			schain: {
+				ver: "1.0",
+				complete: 1,
+				nodes: [
+					{ asi: location.hostname || "localhost", sid: "pub-0001", hp: 1 },
+				],
+			},
+			ortb2: {
+				site: {
+					domain: location.hostname || "localhost",
+					page: location.href,
+					ext: {
+						data: { section: location.pathname.replace(/\//g, "_") || "home" },
+					},
+				},
+			},
+		});
+
+		w.pbjs.setConfig?.({ adtelligent: { chunkSize: 1 } });
+	});
+
+	w.__ads.pbjsLoading = false;
+	_prebidReady = true;
 }
 
 /* ----------------------------- GAM ----------------------------- */
@@ -546,31 +576,87 @@ function makeAdUnits({
 }
 
 function biddersForUnit(sizes, unitId) {
-	const list = [];
+	const bidders = [];
+	const isRegistered = (code) => w.__ads.registeredBidders?.has(code);
+	const aliasedTo = (code) => w.__ads.alias?.[code];
 
-	// Adtelligent
+	let want;
+	if (unitId.includes("adtelligent")) want = ["adtelligent"];
+	else if (unitId.includes("bidmatic")) want = ["bidmatic"];
+	else if (unitId.includes("beautiful") || unitId.includes("pokh"))
+		want = ["pokhvalenko"];
+	else want = ["adtelligent", "bidmatic", "pokhvalenko"];
+
 	const ENABLE_ADTELLIGENT =
 		typeof w.__ads?.config?.ENABLE_ADTELLIGENT !== "undefined"
 			? !!w.__ads.config.ENABLE_ADTELLIGENT
 			: true;
 	const ADTELLIGENT_AID = w.__ads?.config?.ADTELLIGENT_AID ?? 350975;
+	const POKHVALENKO_AID = w.__ads?.config?.POKHVALENKO_AID ?? 350975;
 
-	if (ENABLE_ADTELLIGENT && Number(ADTELLIGENT_AID) && allowSize(sizes)) {
-		list.push({
-			bidder: "adtelligent",
-			params: { aid: Number(ADTELLIGENT_AID) },
-		});
+	// helper: параметри з урахуванням alias
+	const paramsFor = (code) => {
+		const aliasTarget = aliasedTo(code);
+		if (aliasTarget === "adtelligent") {
+			return { bidder: code, params: { aid: Number(ADTELLIGENT_AID) } };
+		}
+		if (code === "adtelligent") {
+			return {
+				bidder: "adtelligent",
+				params: { aid: Number(ADTELLIGENT_AID) },
+			};
+		}
+		if (code === "bidmatic") {
+			const p = { source: Number(BIDMATIC_SOURCE) };
+			if (BIDMATIC_SPN) p.spn = BIDMATIC_SPN;
+			return { bidder: "bidmatic", params: p };
+		}
+		if (code === "pokhvalenko") {
+			return {
+				bidder: "pokhvalenko",
+				params: { aid: Number(POKHVALENKO_AID) },
+			};
+		}
+		return null;
+	};
+
+	// adtelligent
+	if (
+		want.includes("adtelligent") &&
+		ENABLE_ADTELLIGENT &&
+		isRegistered("adtelligent") &&
+		Number(ADTELLIGENT_AID) &&
+		allowSize(sizes)
+	) {
+		bidders.push(paramsFor("adtelligent"));
 	}
 
-	// Bidmatic
-	if (ENABLE_BIDMATIC && Number(BIDMATIC_SOURCE) && allowSize(sizes)) {
-		const p = { source: Number(BIDMATIC_SOURCE) };
-		if (BIDMATIC_SPN) p.spn = BIDMATIC_SPN;
-		list.push({ bidder: "bidmatic", params: p });
+	// bidmatic
+	if (
+		want.includes("bidmatic") &&
+		isRegistered("bidmatic") &&
+		allowSize(sizes) &&
+		(aliasedTo("bidmatic") === "adtelligent"
+			? Number(ADTELLIGENT_AID)
+			: ENABLE_BIDMATIC && Number(BIDMATIC_SOURCE))
+	) {
+		bidders.push(paramsFor("bidmatic"));
 	}
 
-	if (ADS_DEBUG) console.log("[Prebid] bidders for", unitId, list);
-	return list;
+	// pokhvalenko (custom)
+	if (
+		want.includes("pokhvalenko") &&
+		isRegistered("pokhvalenko") &&
+		allowSize(sizes) &&
+		(aliasedTo("pokhvalenko") === "adtelligent"
+			? Number(ADTELLIGENT_AID)
+			: Number(POKHVALENKO_AID))
+	) {
+		bidders.push(paramsFor("pokhvalenko"));
+	}
+
+	if (ADS_DEBUG) console.log("[Prebid] bidders for", unitId, bidders);
+	return bidders;
 }
 
 /* --------------------------- rendering --------------------------- */
@@ -595,35 +681,11 @@ function renderDirect(winner) {
 
 /* ----------------------------- public API ----------------------------- */
 
-function initAnalytics() {
-	if (w.__ads.analytics) return;
-	w.__ads.uid =
-		w.__ads.uid ||
-		`u_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-	w.__ads.geo = w.__ads.geo || "US";
-	w.__ads.analytics = { report: () => {} };
-	if (ADS_DEBUG) console.log("[analytics] init", { uid: w.__ads.uid });
-}
-
-function addAdUnitsIncremental(units) {
-	const fresh = units.filter((u) => !w.__ads.addedCodes.has(u.code));
-	fresh.forEach((u) => {
-		w.__ads.addedCodes.add(u.code);
-	});
-	if (fresh.length) {
-		w.pbjs.addAdUnits?.(fresh);
-		logEvent("hb:addAdUnits", fresh);
-	}
-}
-
 let _initOnce = false;
-let _auctionInFlight = false;
-
 export async function initAds() {
 	if (_initOnce) return;
 	_initOnce = true;
 
-	// чекаємо контейнери від React
 	let slots = ensureContainers();
 	let tries = 0;
 	while (!hasAny(slots) && tries < 10) {
@@ -643,11 +705,31 @@ export async function initAds() {
 	await requestAndDisplay();
 }
 
-export async function requestAndDisplay(adUnits /* optional */) {
-	if (_auctionInFlight) return; // single-flight
-	_auctionInFlight = true;
+function hasAny(s) {
+	return !!(
+		s.topAdtelligent ||
+		s.leftAdtelligent ||
+		s.rightBidmatic ||
+		s.rightBeautiful ||
+		s.mobileBidmatic
+	);
+}
 
-	await ensurePrebid();
+function initAnalytics() {
+	if (w.__ads.analytics) return;
+	w.__ads.uid =
+		w.__ads.uid ||
+		`u_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+	w.__ads.geo = w.__ads.geo || "US";
+	w.__ads.analytics = { report: () => {} };
+	if (ADS_DEBUG) console.log("[analytics] init", { uid: w.__ads.uid });
+}
+
+let _auctionInFlight = false;
+
+export async function requestAndDisplay(adUnits) {
+	if (_auctionInFlight) return;
+	_auctionInFlight = true;
 
 	const slots = ensureContainers();
 	const units = adUnits || makeAdUnits(slots);
@@ -656,69 +738,81 @@ export async function requestAndDisplay(adUnits /* optional */) {
 		return;
 	}
 
-	// placeholders
 	for (const u of units) {
 		const first = (u.mediaTypes?.banner?.sizes || [[300, 250]])[0];
 		ensurePlaceholder(u.code, "auction…", first);
 	}
 
-	w.pbjs.que.push(() => {
-		addAdUnitsIncremental(units);
+	const codes = units.map((u) => u.code);
+	const unitSizesByCode = Object.fromEntries(
+		units.map((u) => [u.code, u.mediaTypes?.banner?.sizes || [[300, 250]]]),
+	);
 
-		const codes = units.map((u) => u.code);
+	w.pbjs.que.push(() => {
+		if (!w.__ads.unitsAdded) {
+			w.__ads.unitsAdded = true;
+			w.pbjs.addAdUnits?.(units);
+			logEvent("hb:addAdUnits", units);
+		}
+
 		w.pbjs.requestBids?.({
 			adUnitCodes: codes,
 			timeout: BIDDER_TIMEOUT,
 			bidsBackHandler: () => {
-				const winners = w.pbjs.getHighestCpmBids?.(codes) || [];
-				logEvent("hb:bidsBackHandler", { codes, winners });
+				const renderWinners = (winners) => {
+					if (USE_GAM && w.googletag?.apiReady) {
+						w.pbjs.setTargetingForGPTAsync?.();
+						w.googletag.cmd.push(() => w.googletag.pubads().refresh());
+						setTimeout(() => {
+							winners.forEach((wb) => {
+								if (!w.__ads.rendered[wb.adUnitCode]) renderDirect(wb);
+							});
+							_auctionInFlight = false;
+						}, GPT_SAFE_FALLBACK_DELAY);
+					} else {
+						winners.forEach(renderDirect);
+						_auctionInFlight = false;
+					}
+				};
 
-				// house для тих, хто не виграв
-				const got = new Set(winners.map((w) => w.adUnitCode));
-				codes
-					.filter((c) => !got.has(c))
-					.forEach((code) => {
-						const u = units.find((x) => x.code === code);
-						const el = document.getElementById(code);
-						const width =
-							el?.getBoundingClientRect().width ||
-							u.mediaTypes.banner.sizes[0][0];
-						const best = pickBestSize(width, u.mediaTypes.banner.sizes);
-						renderHouse(code, best);
-					});
-
-				if (!winners.length) {
-					_auctionInFlight = false;
+				const direct = w.pbjs.getHighestCpmBids?.(codes) || [];
+				if (direct.length) {
+					logEvent("hb:bidsBackHandler", { codes, winners: direct });
+					renderWinners(direct);
 					return;
 				}
 
-				if (USE_GAM && w.googletag?.apiReady) {
-					w.pbjs.setTargetingForGPTAsync?.();
-					w.googletag.cmd.push(() => w.googletag.pubads().refresh());
-					setTimeout(() => {
-						winners.forEach((wb) => {
-							if (!w.__ads.rendered[wb.adUnitCode]) renderDirect(wb);
-						});
-						_auctionInFlight = false;
-					}, GPT_SAFE_FALLBACK_DELAY);
-				} else {
-					winners.forEach(renderDirect);
+				setTimeout(() => {
+					const late = (w.pbjs.getAllWinningBids?.() || []).filter((b) =>
+						codes.includes(b.adUnitCode),
+					);
+					if (late.length) {
+						logEvent("hb:bidsBackHandler:late", { codes, winners: late });
+						renderWinners(late);
+						return;
+					}
+
+					codes.forEach((code) => {
+						const el = document.getElementById(code);
+						const unitSizes = unitSizesByCode[code] || [[300, 250]];
+						const width = el?.getBoundingClientRect().width || unitSizes[0][0];
+						const best = pickBestSize(width, unitSizes);
+						renderHouse(code, best);
+					});
+					logEvent("hb:bidsBackHandler:none", { codes });
 					_auctionInFlight = false;
-				}
+				}, 300);
 			},
 		});
 	});
 }
 
-export async function refreshAds(codes /* optional */) {
-	await ensurePrebid();
-
+export async function refreshAds(codes) {
 	const slots = ensureContainers();
 	const units = makeAdUnits(slots);
 	const adUnitCodes = codes || units.map((u) => u.code);
 	if (!adUnitCodes.length) return;
 
-	// placeholder на рефреш
 	for (const u of units) {
 		if (adUnitCodes.includes(u.code)) {
 			const first = (u.mediaTypes?.banner?.sizes || [[300, 250]])[0];
@@ -726,54 +820,64 @@ export async function refreshAds(codes /* optional */) {
 		}
 	}
 
+	const unitSizesByCode = Object.fromEntries(
+		units.map((u) => [u.code, u.mediaTypes?.banner?.sizes || [[300, 250]]]),
+	);
+
 	w.pbjs.que.push(() => {
 		w.pbjs.requestBids?.({
 			adUnitCodes,
 			timeout: BIDDER_TIMEOUT,
 			bidsBackHandler: () => {
-				const winners = w.pbjs.getHighestCpmBids?.(adUnitCodes) || [];
-				logEvent("hb:bidsBackHandler", { adUnitCodes, winners });
+				const renderWinners = (winners) => {
+					if (USE_GAM && w.googletag?.apiReady) {
+						w.pbjs.setTargetingForGPTAsync?.();
+						w.googletag.cmd.push(() => w.googletag.pubads().refresh());
+						setTimeout(() => {
+							winners.forEach((wb) => {
+								if (!w.__ads.rendered[wb.adUnitCode]) renderDirect(wb);
+							});
+						}, GPT_SAFE_FALLBACK_DELAY);
+					} else {
+						winners.forEach(renderDirect);
+					}
+				};
 
-				const got = new Set(winners.map((w) => w.adUnitCode));
-				adUnitCodes
-					.filter((c) => !got.has(c))
-					.forEach((code) => {
-						const u = units.find((x) => x.code === code);
+				const direct = w.pbjs.getHighestCpmBids?.(adUnitCodes) || [];
+				if (direct.length) {
+					logEvent("hb:bidsBackHandler", { adUnitCodes, winners: direct });
+					renderWinners(direct);
+					return;
+				}
+
+				setTimeout(() => {
+					const late = (w.pbjs.getAllWinningBids?.() || []).filter((b) =>
+						adUnitCodes.includes(b.adUnitCode),
+					);
+					if (late.length) {
+						logEvent("hb:bidsBackHandler:late", { adUnitCodes, winners: late });
+						renderWinners(late);
+						return;
+					}
+
+					adUnitCodes.forEach((code) => {
 						const el = document.getElementById(code);
-						const width =
-							el?.getBoundingClientRect().width ||
-							u.mediaTypes.banner.sizes[0][0];
-						const best = pickBestSize(width, u.mediaTypes.banner.sizes);
+						const unitSizes = unitSizesByCode[code] || [[300, 250]];
+						const width = el?.getBoundingClientRect().width || unitSizes[0][0];
+						const best = pickBestSize(width, unitSizes);
 						renderHouse(code, best);
 					});
-
-				if (!winners.length) return;
-
-				if (USE_GAM && w.googletag?.apiReady) {
-					w.pbjs.setTargetingForGPTAsync?.();
-					w.googletag.cmd.push(() => w.googletag.pubads().refresh());
-					setTimeout(() => {
-						winners.forEach((wb) => {
-							if (!w.__ads.rendered[wb.adUnitCode]) renderDirect(wb);
-						});
-					}, GPT_SAFE_FALLBACK_DELAY);
-				} else {
-					winners.forEach(renderDirect);
-				}
+					logEvent("hb:bidsBackHandler:none", { adUnitCodes });
+				}, 300);
 			},
 		});
 	});
 }
 
-export function unmount(domId) {
-	try {
-		removePlaceholder(domId);
-		const el = document.getElementById(domId);
-		if (el) el.replaceChildren();
-		w.__ads.rendered[domId] = false;
-	} catch {}
-}
-
-export async function mount() {
-	await initAds();
-}
+export default {
+	initAds,
+	requestAndDisplay,
+	refreshAds,
+	mount: initAds,
+	unmount: () => {},
+};

@@ -33,6 +33,12 @@
 		"types": ["vite/client", "react", "react-dom"],
 		"typeRoots": ["./node_modules/@types", "./src"]
 	},
-	"include": ["src", "src/vite-env.d.ts", "modules", "public/modules"],
+	"include": [
+		"src",
+		"src/vite-env.d.ts",
+		"modules",
+		"public/modules",
+		"public/prebid/prebid.js"
+	],
 	"exclude": ["node_modules", "dist"]
 }

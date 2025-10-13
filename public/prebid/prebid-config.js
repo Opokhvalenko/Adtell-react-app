@@ -1,44 +1,84 @@
-window.pbjs = window.pbjs || { que: [] };
-window.googletag = window.googletag || { cmd: [] };
+(function () {
+  window.pbjs = window.pbjs || { que: [] };
+  window.googletag = window.googletag || { cmd: [] };
 
-pbjs.que.push(function () {
-  pbjs.setConfig({
-    consentManagement: {
-      gdpr: { cmpApi: "tcfv2", timeout: 8000, allowAuctionWithoutConsent: false },
-      usp: { cmpApi: "usp", timeout: 8000 },
-    },
-    bidderTimeout: 1200,
-    enableTIDs: true,
-    enableSendAllBids: true,
+  const ADTELLIGENT_AID = 350975;
+  const BIDMATIC_SOURCE = 886409;
+  const POK_AID = 350975; 
+
+  const FORCE_POK =
+    new URL(location.href).searchParams.get("forcePok") === "1";
+
+  // ---- GPT ----
+  googletag.cmd.push(function () {
+    const pubads = googletag.pubads();
+    pubads.disableInitialLoad();
+    pubads.enableSingleRequest();
+    pubads.setCentering(true);
+
+    googletag
+      .defineSlot("/1234567/ad-300x250", [[300, 250]], "ad-adtelligent")
+      .addService(pubads).setTargeting("pos", "adtelligent");
+
+    googletag
+      .defineSlot("/1234567/ad-300x250", [[300, 250]], "ad-bidmatic")
+      .addService(pubads).setTargeting("pos", "bidmatic");
+
+    googletag
+      .defineSlot("/1234567/ad-300x250", [[300, 250]], "ad-pokhvalenko")
+      .addService(pubads).setTargeting("pos", "pokhvalenko");
+
+    googletag.enableServices();
+
+    googletag.display("ad-adtelligent");
+    googletag.display("ad-bidmatic");
+    googletag.display("ad-pokhvalenko");
   });
 
-  const adUnits = [
-    { code: "ad-adtelligent", mediaTypes: { banner: { sizes: [[300,250]] } }, bids: [{ bidder: "adtelligent", params: { aid: 350975 } }] },
-    { code: "ad-bidmatic",   mediaTypes: { banner: { sizes: [[300,250]] } }, bids: [{ bidder: "bidmatic",   params: { source: 886409 } }] },
-    { code: "ad-beautiful",  mediaTypes: { banner: { sizes: [[300,250]] } }, bids: [{ bidder: "customAdServer", params: { adUnitCode: "ad-beautiful", adServerUrl: "/api/adserver/bid" } }] },
-  ];
+  // ---- Prebid ----
+  pbjs.que.push(function () {
+    pbjs.setConfig({
+      bidderTimeout: 1200,
+      enableSendAllBids: true,
 
-  pbjs.addAdUnits(adUnits);
+      consentManagement: {
+        gdpr: { cmpApi: "tcfv2", timeout: 8000, allowAuctionWithoutConsent: false },
+        usp:  { cmpApi: "usp",   timeout: 8000 },
+      },
+      bidderSettings: FORCE_POK
+        ? { pokhvalenko: { bidCpmAdjustment: (cpm) => cpm + 100 } }
+        : undefined,
+    });
 
-  pbjs.requestBids({
-    adUnitCodes: adUnits.map(u => u.code),
-    bidsBackHandler: function () {
-      pbjs.setTargetingForGPTAsync();
-      googletag.cmd.push(function () { googletag.pubads().refresh(); });
-    },
-    timeout: 1100,
+    const adUnits = [
+      {
+        code: "ad-adtelligent",
+        mediaTypes: { banner: { sizes: [[300, 250]] } },
+        bids: [{ bidder: "adtelligent", params: { aid: ADTELLIGENT_AID } }],
+      },
+      {
+        code: "ad-bidmatic",
+        mediaTypes: { banner: { sizes: [[300, 250]] } },
+        bids: [{ bidder: "bidmatic", params: { source: BIDMATIC_SOURCE } }],
+      },
+      {
+        code: "ad-pokhvalenko",
+        mediaTypes: { banner: { sizes: [[300, 250]] } },
+        bids: [{ bidder: "pokhvalenko", params: { aid: POK_AID } }],
+      },
+    ];
+
+    pbjs.addAdUnits(adUnits);
+
+    pbjs.requestBids({
+      adUnitCodes: adUnits.map((u) => u.code),
+      timeout: 1100,
+      bidsBackHandler: function () {
+        pbjs.setTargetingForGPTAsync();
+        googletag.cmd.push(function () {
+          googletag.pubads().refresh();
+        });
+      },
+    });
   });
-});
-
-googletag.cmd.push(function () {
-  const pubads = googletag.pubads();
-  pubads.disableInitialLoad();
-  pubads.enableSingleRequest();
-  pubads.setCentering(true);
-
-  googletag.defineSlot("/1234567/ad-adtelligent", [[300,250]], "ad-adtelligent").addService(pubads).setTargeting("pos","adtelligent");
-  googletag.defineSlot("/1234567/ad-bidmatic",   [[300,250]], "ad-bidmatic").addService(pubads).setTargeting("pos","bidmatic");
-  googletag.defineSlot("/1234567/ad-beautiful",  [[300,250]], "ad-beautiful").addService(pubads).setTargeting("pos","beautiful");
-
-  googletag.enableServices();
-});
+})();

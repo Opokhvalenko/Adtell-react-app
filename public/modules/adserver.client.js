@@ -1,18 +1,29 @@
 const G = globalThis;
 
+/* ───────────────── endpoint resolution ───────────────── */
+const selfUrl = new URL(import.meta.url, location.href);
+const QP_ENDPOINT = selfUrl.searchParams.get("endpoint") || "";
+const META_ENDPOINT =
+	document
+		.querySelector('meta[name="ads-endpoint"]')
+		?.getAttribute("content") || "";
+
 const DEFAULT_ENDPOINT =
 	(G.__ads && typeof G.__ads.endpoint === "string" && G.__ads.endpoint) ||
-	(typeof import.meta !== "undefined" &&
-		import.meta?.env?.VITE_ADSERVER_ENDPOINT) ||
-	(typeof import.meta !== "undefined" && import.meta?.env?.VITE_ADSERVER_URL) ||
+	QP_ENDPOINT ||
+	META_ENDPOINT ||
 	"";
 
+/** @param {string} base */
 function makeBidUrl(base) {
 	if (base && typeof base === "string" && base.trim()) {
 		const ep = base.replace(/\/$/, "");
 		return new URL(`${ep}/api/bid`);
 	}
 	try {
+		console.warn(
+			"[adserver] endpoint is empty — using same-origin /api/bid (ensure Vercel proxy or set window.__ads.endpoint)",
+		);
 		return new URL("/api/bid", window.location.origin);
 	} catch {
 		return new URL("http://localhost:5173/api/bid");
@@ -20,10 +31,8 @@ function makeBidUrl(base) {
 }
 
 /**
- * @returns {Promise<{
- *  lineItemId:string,cpm:number,w:number,h:number,
- *  adm:string,adomain:string[],ttl:number,cur:string
- * }|null>}
+ * @typedef {{lineItemId:string,cpm:number,w:number,h:number,adm:string,adomain:string[],ttl:number,cur:string}} Bid
+ * @returns {Promise<Bid|null>}
  */
 export async function requestBid({
 	size,
@@ -45,11 +54,11 @@ export async function requestBid({
 	const res = await fetch(String(url), { credentials: "include" }).catch(
 		() => null,
 	);
-	if (!res || !res.ok) return null;
-	if (res.status === 204) return null;
+	if (!res || !res.ok || res.status === 204) return null;
 	return res.json();
 }
 
+/** @param {HTMLElement} el @param {Bid} bid @param {{endpoint?:string}} [opts] */
 export function renderBidInto(el, bid, { endpoint } = {}) {
 	if (!el || !bid) return;
 	const root = el.shadowRoot || el.attachShadow?.({ mode: "open" }) || el;
@@ -70,3 +79,12 @@ export function renderBidInto(el, bid, { endpoint } = {}) {
 		});
 	}
 }
+
+/* ─────────────── глобальний доступ для креативів ─────────────── */
+G.adserver = Object.freeze({
+	requestBid,
+	renderBidInto,
+	setEndpoint(v) {
+		G.__ads = { ...(G.__ads || {}), endpoint: String(v || "") };
+	},
+});
