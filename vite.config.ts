@@ -33,6 +33,8 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
         export const ADTELLIGENT_AID = ${n(env.VITE_ADTELLIGENT_AID)};
         export const GAM_NETWORK_CALLS = ${b(env.VITE_GAM_NETWORK)};
         export const ENABLE_REPORTING = ${b(env.VITE_ENABLE_REPORTING)};
+		export const ENABLE_POKHVALENKO = ${b(env.VITE_ENABLE_POKHVALENKO)};
+        export const POKHVALENKO_AID = ${n(env.VITE_POKHVALENKO_AID)};
       `.trim();
 		},
 	};
