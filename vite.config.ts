@@ -162,7 +162,8 @@ function virtualBuildInfo(): PluginOption {
 
 // ────────────────────────────── Vite + Vitest ──────────────────────────
 export default defineConfig(({ mode }) => {
-	const env = loadEnv(mode, process.cwd(), "");
+	const fileEnv = loadEnv(mode, process.cwd(), "");
+	const env = { ...(process.env as Record<string, string>), ...fileEnv };
 	const isDev = mode !== "production";
 	const isAnalyze = env.ANALYZE === "true";
 	const isCI = !!env.CI;
