@@ -236,6 +236,11 @@ function pickSpec(mod, names = []) {
 	return null;
 }
 
+function pbjsQueueFlush() {
+	w.pbjs = w.pbjs || { que: [] };
+	return new Promise((res) => w.pbjs.que.push(res));
+}
+
 async function ensurePrebid() {
 	if (_prebidReady) return;
 	if (_prebidPromise) return _prebidPromise;
@@ -281,7 +286,7 @@ async function ensurePrebid() {
 
 		const loaded = await Promise.all(promises);
 
-		// 3) реєстрація / alias
+		// 3) реєстрація / alias / конфіг
 		w.pbjs.que.push(() => {
 			const mark = (code) => w.__ads.registeredBidders.add(code);
 			let adtelligentRegistered = false;
@@ -340,16 +345,13 @@ async function ensurePrebid() {
 			const hasUSP = typeof w.__uspapi === "function";
 			const hasGPP = typeof w.__gpp === "function";
 
-			// ⛔️ ВАЖЛИВО: не передаємо consentManagement, якщо на сторінці немає CMP
-			const consentConfig =
+			const _consentConfig =
 				hasTCF || hasUSP || hasGPP
 					? {
 							...(hasTCF && {
 								gdpr: {
 									cmpApi: "iab",
 									timeout: 8000,
-									// для демо можна дозволити без згоди:
-									// allowAuctionWithoutConsent: true,
 								},
 							}),
 							...(hasUSP && { usp: { cmpApi: "iab", timeout: 1000 } }),
@@ -359,13 +361,14 @@ async function ensurePrebid() {
 
 			w.pbjs.setConfig?.({
 				debug: !!ADS_DEBUG,
-				bidderTimeout: BIDDER_TIMEOUT,
+				bidderTimeout: 3000,
 				enableSendAllBids: true,
+				enableTIDs: true,
 
-				// ← додаємо consentManagement лише якщо він є
-				...(consentConfig ? { consentManagement: consentConfig } : {}),
+				// ...(consentConfig ? { consentManagement: consentConfig } : {}),
 
 				coppa: !!w.__ads?.config?.coppa,
+
 				floors: w.__ads?.config?.floors ?? {
 					enforcement: { enforceFloors: true },
 					data: {
@@ -380,17 +383,26 @@ async function ensurePrebid() {
 						},
 					},
 				},
+
 				userSync: {
-					iframeEnabled: true,
-					filterSettings: { iframe: { bidders: "*", filter: "include" } },
-					syncDelay: 1000,
+					syncEnabled: false,
+					iframeEnabled: false,
+					pixelEnabled: false,
+					syncDelay: 0,
 				},
-				activityControls: { enabled: false },
+
 				sizeConfig: [
 					{
 						label: "desktop",
 						mediaQuery: "(min-width:1024px)",
-						sizesSupported: [...TOP_SIZES, ...SIDE_SIZES],
+						sizesSupported: [
+							[970, 90],
+							[728, 90],
+							[468, 60],
+							[320, 50],
+							[300, 600],
+							[300, 250],
+						],
 					},
 					{
 						label: "tablet",
@@ -410,6 +422,7 @@ async function ensurePrebid() {
 						],
 					},
 				],
+
 				schain: {
 					ver: "1.0",
 					complete: 1,
@@ -616,7 +629,7 @@ function biddersForUnit(sizes, unitId) {
 			? !!w.__ads.config.ENABLE_ADTELLIGENT
 			: true;
 	const ADTELLIGENT_AID = w.__ads?.config?.ADTELLIGENT_AID ?? 350975;
-	const POKHVALENKO_AID = w.__ads?.config?.POKHVALENKO_AID ?? 350975;
+	const _POKHVALENKO_AID = w.__ads?.config?.POKHVALENKO_AID ?? 350975;
 
 	const paramsFor = (code) => {
 		const aliasTarget = aliasedTo(code);
@@ -637,7 +650,7 @@ function biddersForUnit(sizes, unitId) {
 		if (code === "pokhvalenko") {
 			return {
 				bidder: "pokhvalenko",
-				params: { aid: Number(POKHVALENKO_AID) },
+				params: { aid: Number(POKHVALЕНКО_AID) },
 			};
 		}
 		return null;
@@ -673,7 +686,7 @@ function biddersForUnit(sizes, unitId) {
 		allowSize(sizes) &&
 		(aliasedTo("pokhvalenko") === "adtelligent"
 			? Number(ADTELLIGENT_AID)
-			: Number(POKHVALENKO_AID))
+			: Number(POKHVALENКО_AID))
 	) {
 		bidders.push(paramsFor("pokhvalenko"));
 	}
@@ -722,7 +735,11 @@ export async function initAds() {
 	let slots = ensureContainers();
 	let tries = 0;
 	while (!hasAny(slots) && tries < 10) {
-		await new Promise((r) => setTimeout(r, 150));
+		await new Promise((r) =>
+			"requestIdleCallback" in window
+				? requestIdleCallback(r)
+				: setTimeout(r, 50),
+		);
 		slots = ensureContainers();
 		tries++;
 	}
@@ -730,6 +747,9 @@ export async function initAds() {
 
 	initAnalytics();
 	await ensurePrebid();
+	await waitBiddersReady();
+	await pbjsQueueFlush();
+
 	await ensureGpt();
 	hookPrebidEvents();
 	applyNetworkTargeting();
@@ -760,9 +780,25 @@ function initAnalytics() {
 
 let _auctionInFlight = false;
 
+async function waitBiddersReady() {
+	await new Promise((r) => {
+		window.pbjs = window.pbjs || { que: [] };
+		window.pbjs.que.push(r);
+	});
+	const t0 = performance.now();
+	while (
+		(window.__ads?.registeredBidders?.size || 0) === 0 &&
+		performance.now() - t0 < 800
+	) {
+		await new Promise((r) => window.pbjs.que.push(r));
+	}
+}
+
 export async function requestAndDisplay(adUnits) {
 	if (_auctionInFlight) return;
 	_auctionInFlight = true;
+
+	await pbjsQueueFlush();
 
 	const slots = ensureContainers();
 	const units = adUnits || makeAdUnits(slots);
@@ -841,6 +877,8 @@ export async function requestAndDisplay(adUnits) {
 }
 
 export async function refreshAds(codes) {
+	await pbjsQueueFlush();
+
 	const slots = ensureContainers();
 	const units = makeAdUnits(slots);
 	const adUnitCodes = codes || units.map((u) => u.code);

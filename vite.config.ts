@@ -188,6 +188,7 @@ export default defineConfig(({ mode }) => {
 			port: Number(env.VITE_DEV_PORT || 5173),
 			strictPort: true,
 			proxy: {
+				"/assets": { target: API_TARGET, changeOrigin: true },
 				"/public": { target: API_TARGET, changeOrigin: true },
 				"/api/stats": {
 					target: API_TARGET,
