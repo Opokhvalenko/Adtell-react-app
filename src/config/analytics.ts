@@ -1,9 +1,23 @@
-export const ANALYTICS_EVENTS =
-	(import.meta.env.VITE_REPORTING_URL as string | undefined) ||
-	"/api/analytics/events"; // лишаємо відносним: піде через proxy
+declare global {
+	interface Window {
+		__ads?: { endpoint?: string; uid?: string };
+	}
+}
 
-export const ANALYTICS_STATS =
-	(import.meta.env.VITE_STATS_URL as string | undefined) || "/api/stats"; // фронт завжди б’є по /api/stats
+const g = globalThis as unknown as { __ads?: { endpoint?: string } };
 
-// для зворотної сумісності
+const BASE =
+	g.__ads?.endpoint ||
+	import.meta.env.VITE_ANALYTICS_BASE ||
+	import.meta.env.VITE_API_URL ||
+	"";
+
+const EVENTS = import.meta.env.VITE_REPORTING_URL || "/api/analytics/events";
+const STATS = import.meta.env.VITE_STATS_URL || "/api/stats";
+
+const join = (b: string, p: string) =>
+	`${b.replace(/\/$/, "")}${p.startsWith("/") ? "" : "/"}${p}`;
+
+export const ANALYTICS_EVENTS = BASE ? join(BASE, EVENTS) : EVENTS;
+export const ANALYTICS_STATS = BASE ? join(BASE, STATS) : STATS;
 export const ANALYTICS_ENDPOINT = ANALYTICS_EVENTS;
