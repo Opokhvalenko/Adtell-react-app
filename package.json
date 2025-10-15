@@ -8,22 +8,18 @@
 		"tw:dev": "tailwindcss -c tailwind.config.js -i ./src/index.css -o ./src/tailwind.css --watch",
 		"tw:build": "tailwindcss -c tailwind.config.js -i ./src/index.css -o ./src/tailwind.css --minify",
 		"tw:embed": "tailwindcss -c tailwind.config.js -i ./src/ssr/embed.css -o ./public/assets/tw-embed.css --minify",
-
 		"prebid:copy": "node -e \"(function(){const fs=require('fs');const p=require('path');const out='public/prebid/prebid.js';fs.mkdirSync(p.dirname(out),{recursive:true});function exists(f){try{return fs.statSync(f).isFile()}catch(e){return false}}let src=null;try{src=require.resolve('prebid.js/dist/prebid.js')}catch(e){}if(!src){try{src=require.resolve('prebid.js/build/dist/prebid.js')}catch(e){}}if(!src&&exists('public/prebid/prebid10.10.0.js')){src='public/prebid/prebid10.10.0.js'}if(src){fs.copyFileSync(src,out);console.log('Prebid copied from',src)}else{console.log('No local Prebid bundle found; CDN fallback will be used')}})();\"",
 		"prebid": "npm run prebid:copy",
-
 		"dev": "vite",
 		"build": "npm run prebid && npm run tw:build && vite build",
 		"clean": "rimraf dist",
 		"rebuild": "npm run clean && npm run build",
 		"preview": "vite preview",
-
 		"lint": "biome check --diagnostic-level=error .",
 		"biome:check": "biome check --diagnostic-level=error .",
 		"biome:fix": "biome check --write .",
 		"biome:fix:unsafe": "biome check --write --unsafe .",
 		"format": "biome format --write .",
-
 		"type-check": "tsc --noEmit -p tsconfig.json",
 		"type-check:watch": "tsc -w --noEmit -p tsconfig.json",
 		"check": "npm run type-check && npm run biome:check",
@@ -60,6 +56,7 @@
 		"@tailwindcss/cli": "^4.1.13",
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.19",
+		"@tailwindcss/vite": "^4.1.14",
 		"@testing-library/jest-dom": "^6.8.0",
 		"@testing-library/react": "^16.3.0",
 		"@types/node": "^24.5.1",
