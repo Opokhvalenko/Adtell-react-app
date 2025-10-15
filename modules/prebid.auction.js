@@ -335,35 +335,36 @@ async function ensurePrebid() {
 				alias("pokhvalenko", "adtelligent");
 			}
 
-			// Consent / usersync (м’які дефолти без CMP)
+			// === CONSENT / CMP handling ===
 			const hasTCF = typeof w.__tcfapi === "function";
 			const hasUSP = typeof w.__uspapi === "function";
 			const hasGPP = typeof w.__gpp === "function";
-			const isProd = (import.meta?.env?.MODE || "development") === "production";
 
+			// ⛔️ ВАЖЛИВО: не передаємо consentManagement, якщо на сторінці немає CMP
 			const consentConfig =
 				hasTCF || hasUSP || hasGPP
 					? {
 							...(hasTCF && {
 								gdpr: {
 									cmpApi: "iab",
-									timeout: 800,
-									allowAuctionWithoutConsent: !isProd,
+									timeout: 8000,
+									// для демо можна дозволити без згоди:
+									// allowAuctionWithoutConsent: true,
 								},
 							}),
-							...(hasUSP && { usp: { cmpApi: "iab", timeout: 800 } }),
-							...(hasGPP && { gpp: { cmpApi: "iab", timeout: 800 } }),
+							...(hasUSP && { usp: { cmpApi: "iab", timeout: 1000 } }),
+							...(hasGPP && { gpp: { cmpApi: "iab", timeout: 1000 } }),
 						}
-					: {
-							// коли CMP немає — не блокуємо аукціон у демо
-							gdpr: { cmpApi: "none", allowAuctionWithoutConsent: true },
-						};
+					: undefined;
 
 			w.pbjs.setConfig?.({
 				debug: !!ADS_DEBUG,
 				bidderTimeout: BIDDER_TIMEOUT,
 				enableSendAllBids: true,
-				consentManagement: consentConfig,
+
+				// ← додаємо consentManagement лише якщо він є
+				...(consentConfig ? { consentManagement: consentConfig } : {}),
+
 				coppa: !!w.__ads?.config?.coppa,
 				floors: w.__ads?.config?.floors ?? {
 					enforcement: { enforceFloors: true },
@@ -381,7 +382,6 @@ async function ensurePrebid() {
 				},
 				userSync: {
 					iframeEnabled: true,
-					// filterSettings: { iframe: { filter: 'include', bidders: ['bidmatic','pokhvalenko'] } },
 					filterSettings: { iframe: { bidders: "*", filter: "include" } },
 					syncDelay: 1000,
 				},
