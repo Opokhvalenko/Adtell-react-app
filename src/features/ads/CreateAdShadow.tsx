@@ -1,4 +1,9 @@
 import { useEffect, useRef } from "react";
+import { API_ORIGIN } from "@/lib/apiBase";
+
+const src = import.meta.env.DEV
+	? "/create-lineitem"
+	: `${API_ORIGIN}/create-lineitem`;
 
 type ResizeMsg = { type: "resize"; height: number };
 
@@ -48,7 +53,7 @@ export default function CreateAdShadow() {
 			<div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow-xl">
 				<iframe
 					ref={frameRef}
-					src="/create-lineitem"
+					src={src}
 					title="Create Line Item"
 					style={{ width: "100%", height: "1200px", border: 0 }}
 					sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
@@ -59,12 +64,7 @@ export default function CreateAdShadow() {
 
 			<p className="mt-3 text-center text-sm text-slate-500">
 				Якщо форма не відображається, відкрий її{" "}
-				<a
-					href="/create-lineitem"
-					target="_blank"
-					rel="noreferrer"
-					className="underline"
-				>
+				<a href={src} target="_blank" rel="noreferrer" className="underline">
 					у новій вкладці
 				</a>
 				.
