@@ -8,6 +8,8 @@ import {
 } from "virtual:ads-config";
 import { composeAdsCss } from "/modules/ads.styles.js";
 
+/* ───────────────────────────────── constants ───────────────────────────────── */
+
 const PREBID_SRC_LOCAL = "/prebid/prebid.js";
 const PREBID_SRC_CDN =
 	"https://cdn.jsdelivr.net/npm/prebid.js@10.10.0/dist/prebid.js";
@@ -28,27 +30,50 @@ const SIDE_SIZES = [
 const BIDDER_TIMEOUT = 3000;
 const GPT_SAFE_FALLBACK_DELAY = BIDDER_TIMEOUT + 1200;
 
+const BIDMATIC_ALLOWED = [
+	[300, 250],
+	[300, 600],
+	[320, 50],
+	[468, 60],
+	[728, 90],
+	[970, 90],
+];
+
+/* ──────────────────────────────── globals ──────────────────────────────── */
+
 const w = window;
 w.__ads = w.__ads || {};
 w.__adslog = w.__adslog || [];
-w.__ads.rendered = w.__ads.rendered || {}; // { [id]: boolean }
+w.__ads.rendered = w.__ads.rendered || {};
+w.__ads.renderedByAdId = w.__ads.renderedByAdId || new Set();
 w.__ads.registeredBidders = w.__ads.registeredBidders || new Set();
-w.__ads.alias = w.__ads.alias || {}; // e.g. { bidmatic: 'adtelligent' }
+w.__ads.alias = w.__ads.alias || {};
 
-/* ----------------------------- utils ----------------------------- */
+/* ───────────────────────────────── helpers ──────────────────────────────── */
 
+const loadedScripts = new Set();
 function loadScript(src, id) {
 	return new Promise((resolve, reject) => {
 		if (id && document.getElementById(id)) return resolve();
+		if (loadedScripts.has(src)) return resolve();
+
 		const s = document.createElement("script");
 		if (id) s.id = id;
 		s.async = true;
 		s.src = src;
-		s.onload = () => resolve();
+		s.onload = () => {
+			loadedScripts.add(src);
+			resolve();
+		};
 		s.onerror = (e) => reject(e);
 		document.head.appendChild(s);
 	});
 }
+
+const allowSize = (sizes) =>
+	sizes?.some?.(([w, h]) =>
+		BIDMATIC_ALLOWED.some(([aw, ah]) => aw === w && ah === h),
+	);
 
 function pickBestSize(containerW, sizes) {
 	const sorted = [...sizes].sort((a, b) => b[0] - a[0]);
@@ -84,14 +109,14 @@ function injectStylesOnce() {
     .ads-placeholder{ display:flex; align-items:center; justify-content:center; width:100%; height:100%;
       border-radius:12px; background:repeating-linear-gradient(-45deg,#f5f6fb 0 12px,#edeff7 12px 24px); }
     .ads-placeholder span{ font:600 12px/1 system-ui,-apple-system,Segoe UI,Inter,Roboto,sans-serif; color:#6b7280 }
-    `;
+  `;
 	const style = document.createElement("style");
 	style.dataset.ads = "styles";
 	style.textContent = css;
 	document.head.appendChild(style);
 }
 
-/* --------------------- containers provided by React --------------------- */
+/* ───────────────────── containers provided by React ───────────────────── */
 
 function ensureContainers() {
 	injectStylesOnce();
@@ -119,7 +144,7 @@ function ensureContainers() {
 	};
 }
 
-/* ---------------------- house creatives (images) ---------------------- */
+/* ───────────────────────────── house creatives ─────────────────────────── */
 
 function brandFor(unitId) {
 	if (unitId.includes("adtelligent")) return "Adtelligent";
@@ -182,22 +207,10 @@ function removePlaceholder(id) {
 	document.getElementById(id)?.querySelector(".ads-placeholder")?.remove();
 }
 
-/* ---------------------------- Prebid ---------------------------- */
-
-const BIDMATIC_ALLOWED = [
-	[300, 250],
-	[300, 600],
-	[320, 50],
-	[468, 60],
-	[728, 90],
-	[970, 90],
-];
-const allowSize = (sizes) =>
-	sizes?.some?.(([w, h]) =>
-		BIDMATIC_ALLOWED.some(([aw, ah]) => aw === w && ah === h),
-	);
+/* ──────────────────────────────── Prebid ──────────────────────────────── */
 
 let _prebidReady = false;
+let _prebidPromise = null;
 
 // вибираємо spec з будь-якого типу експорту
 function pickSpec(mod, names = []) {
@@ -224,208 +237,219 @@ function pickSpec(mod, names = []) {
 }
 
 async function ensurePrebid() {
-	if (_prebidReady || w.__ads.pbjsLoading) return;
-	w.__ads.pbjsLoading = true;
-	w.pbjs = w.pbjs || { que: [] };
+	if (_prebidReady) return;
+	if (_prebidPromise) return _prebidPromise;
 
-	// 1) підключаємо Prebid
-	try {
-		await loadScript(PREBID_SRC_LOCAL, "pbjs-lib");
-	} catch {
-		await loadScript(PREBID_SRC_CDN, "pbjs-lib");
-	}
+	_prebidPromise = (async () => {
+		w.pbjs = w.pbjs || { que: [] };
 
-	// 2) імпортуємо адаптери
-	const promises = [];
-
-	if (ENABLE_BIDMATIC) {
-		promises.push(
-			import("/modules/bidmaticBidAdapter.js")
-				.then((m) => ({
-					name: "bidmatic",
-					spec: pickSpec(m, ["bidmaticBidAdapter"]),
-				}))
-				.catch((e) => ({ name: "bidmatic", error: e })),
-		);
-	}
-	promises.push(
-		import("/modules/adtelligentBidAdapter.js")
-			.then((m) => ({
-				name: "adtelligent",
-				spec: pickSpec(m, ["adtelligentBidAdapter"]),
-			}))
-			.catch((e) => ({ name: "adtelligent", error: e })),
-	);
-	promises.push(
-		import("/modules/pokhvalenkoBidAdapter.js")
-			.then((m) => ({
-				name: "pokhvalenko",
-				spec: pickSpec(m, ["pokhvalenkoBidAdapter"]),
-			}))
-			.catch((e) => ({ name: "pokhvalenko", error: e })),
-	);
-
-	const loaded = await Promise.all(promises);
-
-	// 3) реєстрація / позначення доступних бідерів (+ alias fallback)
-	w.pbjs.que.push(() => {
-		const mark = (code) => w.__ads.registeredBidders.add(code);
-
-		let adtelligentRegistered = false;
-
-		loaded.forEach(({ name, spec, error }) => {
-			if (error) {
-				console.warn(`[Prebid] ${name} adapter load failed:`, error);
-			}
-			try {
-				if (spec && typeof w.pbjs.registerBidder === "function") {
-					w.pbjs.registerBidder(spec);
-					mark(spec.code || name);
-					if (name === "adtelligent") adtelligentRegistered = true;
-					if (ADS_DEBUG) console.log(`[Prebid] ${name} registered`);
-				} else {
-					if (name === "adtelligent") {
-						adtelligentRegistered = true;
-						mark("adtelligent");
-						console.warn(
-							"[Prebid] adtelligent register skipped (no spec) — assuming bundled/self-registered",
-						);
-					} else {
-						console.warn(
-							`[Prebid] ${name} register skipped (no spec) — bidder won't be used`,
-						);
-					}
-				}
-			} catch (e) {
-				console.warn(`[Prebid] ${name} register error:`, e);
-			}
-		});
-
-		const isReg = (code) => w.__ads.registeredBidders.has(code);
-		const alias = (from, to) => {
-			if (
-				!isReg(from) &&
-				isReg(to) &&
-				typeof w.pbjs.aliasBidder === "function"
-			) {
-				try {
-					w.pbjs.aliasBidder(to, from);
-					w.__ads.alias[from] = to;
-					mark(from);
-					console.info(`[Prebid] alias '${from}' -> '${to}'`);
-				} catch (e) {
-					console.warn(`[Prebid] alias failed '${from}' -> '${to}'`, e);
-				}
-			}
-		};
-		if (adtelligentRegistered) {
-			alias("bidmatic", "adtelligent");
-			alias("pokhvalenko", "adtelligent");
+		// 1) підключаємо Prebid
+		try {
+			await loadScript(PREBID_SRC_LOCAL, "pbjs-lib");
+		} catch {
+			await loadScript(PREBID_SRC_CDN, "pbjs-lib");
 		}
 
-		const hasTCF = typeof w.__tcfapi === "function";
-		const hasUSP = typeof w.__uspapi === "function";
-		const hasGPP = typeof w.__gpp === "function";
-		const isProd = (import.meta?.env?.MODE || "development") === "production";
+		// 2) імпортуємо адаптери
+		const promises = [];
+		if (ENABLE_BIDMATIC) {
+			promises.push(
+				import("/modules/bidmaticBidAdapter.js")
+					.then((m) => ({
+						name: "bidmatic",
+						spec: pickSpec(m, ["bidmaticBidAdapter"]),
+					}))
+					.catch((e) => ({ name: "bidmatic", error: e })),
+			);
+		}
+		promises.push(
+			import("/modules/adtelligentBidAdapter.js")
+				.then((m) => ({
+					name: "adtelligent",
+					spec: pickSpec(m, ["adtelligentBidAdapter"]),
+				}))
+				.catch((e) => ({ name: "adtelligent", error: e })),
+		);
+		promises.push(
+			import("/modules/pokhvalenkoBidAdapter.js")
+				.then((m) => ({
+					name: "pokhvalenko",
+					spec: pickSpec(m, ["pokhvalenkoBidAdapter"]),
+				}))
+				.catch((e) => ({ name: "pokhvalenko", error: e })),
+		);
 
-		const consentConfig =
-			hasTCF || hasUSP || hasGPP
-				? {
-						...(hasTCF && {
-							gdpr: {
-								cmpApi: "iab",
-								timeout: 8000,
-								allowAuctionWithoutConsent: !isProd,
-							},
-						}),
-						...(hasUSP && { usp: { cmpApi: "iab", timeout: 1000 } }),
-						...(hasGPP && { gpp: { cmpApi: "iab", timeout: 1000 } }),
+		const loaded = await Promise.all(promises);
+
+		// 3) реєстрація / alias
+		w.pbjs.que.push(() => {
+			const mark = (code) => w.__ads.registeredBidders.add(code);
+			let adtelligentRegistered = false;
+
+			loaded.forEach(({ name, spec, error }) => {
+				if (error) console.warn(`[Prebid] ${name} adapter load failed:`, error);
+
+				try {
+					if (spec && typeof w.pbjs.registerBidder === "function") {
+						w.pbjs.registerBidder(spec);
+						mark(spec.code || name);
+						if (name === "adtelligent") adtelligentRegistered = true;
+						if (ADS_DEBUG) console.log(`[Prebid] ${name} registered`);
+					} else {
+						if (name === "adtelligent") {
+							adtelligentRegistered = true;
+							mark("adtelligent");
+							console.warn(
+								"[Prebid] adtelligent register skipped (no spec) — assuming bundled/self-registered",
+							);
+						} else {
+							console.warn(
+								`[Prebid] ${name} register skipped (no spec) — bidder won't be used`,
+							);
+						}
 					}
-				: undefined;
+				} catch (e) {
+					console.warn(`[Prebid] ${name} register error:`, e);
+				}
+			});
 
-		w.pbjs.setConfig?.({
-			debug: !!ADS_DEBUG,
-			bidderTimeout: BIDDER_TIMEOUT,
-			enableSendAllBids: true,
-			...(consentConfig ? { consentManagement: consentConfig } : {}),
-			coppa: !!w.__ads?.config?.coppa,
-			floors: w.__ads?.config?.floors ?? {
-				enforcement: { enforceFloors: true },
-				data: {
-					currency: "USD",
-					schema: { fields: ["mediaType", "size"] },
-					values: {
-						"banner|300x250": 0.01,
-						"banner|300x600": 0.02,
-						"banner|728x90": 0.01,
-						"banner|970x90": 0.02,
-						"banner|*": 0.005,
+			const isReg = (code) => w.__ads.registeredBidders.has(code);
+			const alias = (from, to) => {
+				if (
+					!isReg(from) &&
+					isReg(to) &&
+					typeof w.pbjs.aliasBidder === "function"
+				) {
+					try {
+						w.pbjs.aliasBidder(to, from);
+						w.__ads.alias[from] = to;
+						mark(from);
+						console.info(`[Prebid] alias '${from}' -> '${to}'`);
+					} catch (e) {
+						console.warn(`[Prebid] alias failed '${from}' -> '${to}'`, e);
+					}
+				}
+			};
+			if (adtelligentRegistered) {
+				alias("bidmatic", "adtelligent");
+				alias("pokhvalenko", "adtelligent");
+			}
+
+			// Consent / usersync (м’які дефолти без CMP)
+			const hasTCF = typeof w.__tcfapi === "function";
+			const hasUSP = typeof w.__uspapi === "function";
+			const hasGPP = typeof w.__gpp === "function";
+			const isProd = (import.meta?.env?.MODE || "development") === "production";
+
+			const consentConfig =
+				hasTCF || hasUSP || hasGPP
+					? {
+							...(hasTCF && {
+								gdpr: {
+									cmpApi: "iab",
+									timeout: 800,
+									allowAuctionWithoutConsent: !isProd,
+								},
+							}),
+							...(hasUSP && { usp: { cmpApi: "iab", timeout: 800 } }),
+							...(hasGPP && { gpp: { cmpApi: "iab", timeout: 800 } }),
+						}
+					: {
+							// коли CMP немає — не блокуємо аукціон у демо
+							gdpr: { cmpApi: "none", allowAuctionWithoutConsent: true },
+						};
+
+			w.pbjs.setConfig?.({
+				debug: !!ADS_DEBUG,
+				bidderTimeout: BIDDER_TIMEOUT,
+				enableSendAllBids: true,
+				consentManagement: consentConfig,
+				coppa: !!w.__ads?.config?.coppa,
+				floors: w.__ads?.config?.floors ?? {
+					enforcement: { enforceFloors: true },
+					data: {
+						currency: "USD",
+						schema: { fields: ["mediaType", "size"] },
+						values: {
+							"banner|300x250": 0.01,
+							"banner|300x600": 0.02,
+							"banner|728x90": 0.01,
+							"banner|970x90": 0.02,
+							"banner|*": 0.005,
+						},
 					},
 				},
-			},
-			userSync: {
-				iframeEnabled: true,
-				filterSettings: { iframe: { bidders: "*", filter: "include" } },
-				syncDelay: 1000,
-			},
-			activityControls: { enabled: false },
-			sizeConfig: [
-				{
-					label: "desktop",
-					mediaQuery: "(min-width:1024px)",
-					sizesSupported: [...TOP_SIZES, ...SIDE_SIZES],
+				userSync: {
+					iframeEnabled: true,
+					// filterSettings: { iframe: { filter: 'include', bidders: ['bidmatic','pokhvalenko'] } },
+					filterSettings: { iframe: { bidders: "*", filter: "include" } },
+					syncDelay: 1000,
 				},
-				{
-					label: "tablet",
-					mediaQuery: "(min-width:768px) and (max-width:1023px)",
-					sizesSupported: [
-						[728, 90],
-						[468, 60],
-						[300, 250],
-					],
-				},
-				{
-					label: "mobile",
-					mediaQuery: "(max-width:767px)",
-					sizesSupported: [
-						[320, 50],
-						[300, 250],
-					],
-				},
-			],
-			schain: {
-				ver: "1.0",
-				complete: 1,
-				nodes: [
-					{ asi: location.hostname || "localhost", sid: "pub-0001", hp: 1 },
+				activityControls: { enabled: false },
+				sizeConfig: [
+					{
+						label: "desktop",
+						mediaQuery: "(min-width:1024px)",
+						sizesSupported: [...TOP_SIZES, ...SIDE_SIZES],
+					},
+					{
+						label: "tablet",
+						mediaQuery: "(min-width:768px) and (max-width:1023px)",
+						sizesSupported: [
+							[728, 90],
+							[468, 60],
+							[300, 250],
+						],
+					},
+					{
+						label: "mobile",
+						mediaQuery: "(max-width:767px)",
+						sizesSupported: [
+							[320, 50],
+							[300, 250],
+						],
+					},
 				],
-			},
-			ortb2: {
-				site: {
-					domain: location.hostname || "localhost",
-					page: location.href,
-					ext: {
-						data: { section: location.pathname.replace(/\//g, "_") || "home" },
+				schain: {
+					ver: "1.0",
+					complete: 1,
+					nodes: [
+						{ asi: location.hostname || "localhost", sid: "pub-0001", hp: 1 },
+					],
+				},
+				ortb2: {
+					site: {
+						domain: location.hostname || "localhost",
+						page: location.href,
+						ext: {
+							data: {
+								section: location.pathname.replace(/\//g, "_") || "home",
+							},
+						},
 					},
 				},
-			},
+			});
+
+			w.pbjs.setConfig?.({ adtelligent: { chunkSize: 1 } });
 		});
 
-		w.pbjs.setConfig?.({ adtelligent: { chunkSize: 1 } });
-	});
+		_prebidReady = true;
+	})();
 
-	w.__ads.pbjsLoading = false;
-	_prebidReady = true;
+	return _prebidPromise;
 }
 
-/* ----------------------------- GAM ----------------------------- */
+/* ─────────────────────────────────── GAM ─────────────────────────────────── */
 
+let _gptPromise = null;
 async function ensureGpt() {
 	if (!ENABLE_GAM) return;
-	if (w.googletag?.apiReady || w.__ads.gptLoading) return;
-	w.__ads.gptLoading = true;
+	if (w.googletag?.apiReady) return;
+	if (_gptPromise) return _gptPromise;
+
 	w.googletag = w.googletag || { cmd: [] };
-	await loadScript(GPT_SRC, "gpt-lib");
+	_gptPromise = loadScript(GPT_SRC, "gpt-lib");
+	return _gptPromise;
 }
 
 function slotExists(id) {
@@ -513,7 +537,7 @@ function defineGptSlots({ topAdtelligent, leftAdtelligent, rightBidmatic }) {
 	});
 }
 
-/* ---------------------------- events ---------------------------- */
+/* ───────────────────────────────── events ───────────────────────────────── */
 
 function hookPrebidEvents() {
 	if (w.__ads.eventsHooked) return;
@@ -540,7 +564,7 @@ function hookPrebidEvents() {
 	});
 }
 
-/* --------------------------- adUnits --------------------------- */
+/* ───────────────────────────────── adUnits ──────────────────────────────── */
 
 function makeAdUnits({
 	topAdtelligent,
@@ -594,7 +618,6 @@ function biddersForUnit(sizes, unitId) {
 	const ADTELLIGENT_AID = w.__ads?.config?.ADTELLIGENT_AID ?? 350975;
 	const POKHVALENKO_AID = w.__ads?.config?.POKHVALENKO_AID ?? 350975;
 
-	// helper: параметри з урахуванням alias
 	const paramsFor = (code) => {
 		const aliasTarget = aliasedTo(code);
 		if (aliasTarget === "adtelligent") {
@@ -659,11 +682,15 @@ function biddersForUnit(sizes, unitId) {
 	return bidders;
 }
 
-/* --------------------------- rendering --------------------------- */
+/* ─────────────────────────────── rendering ─────────────────────────────── */
 
 function renderDirect(winner) {
 	const el = document.getElementById(winner.adUnitCode);
 	if (!el) return;
+
+	const adId = String(winner.adId || "");
+	if (adId && w.__ads.renderedByAdId.has(adId)) return;
+
 	const W = Number(winner.width || 0),
 		H = Number(winner.height || 0);
 	setSlotSize(el, [W, H]);
@@ -675,11 +702,17 @@ function renderDirect(winner) {
 	ifr.style.cssText =
 		"display:block;border:0;width:100%;height:100%;overflow:hidden;border-radius:12px";
 	el.appendChild(ifr);
-	w.pbjs.renderAd?.(ifr.contentWindow.document, winner.adId);
-	w.__ads.rendered[winner.adUnitCode] = true;
+
+	try {
+		w.pbjs.renderAd?.(ifr.contentWindow.document, winner.adId);
+		if (adId) w.__ads.renderedByAdId.add(adId);
+		w.__ads.rendered[winner.adUnitCode] = true;
+	} catch (e) {
+		console.warn("[Prebid] renderAd error", e);
+	}
 }
 
-/* ----------------------------- public API ----------------------------- */
+/* ───────────────────────────── public API ──────────────────────────────── */
 
 let _initOnce = false;
 export async function initAds() {
