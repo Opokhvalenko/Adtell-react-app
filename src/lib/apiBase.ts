@@ -5,4 +5,5 @@ const ORIGIN = import.meta.env.DEV
 			"https://addtell-backend.onrender.com"
 		).replace(/\/$/, "");
 
+export const API_ORIGIN = ORIGIN;
 export const API_BASE = ORIGIN ? `${ORIGIN}/api` : "/api";
