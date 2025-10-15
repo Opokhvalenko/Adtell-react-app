@@ -2,13 +2,16 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 
-/* локальні шрифти */
+/* Увімкнути dark-варіант через клас .dark на <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Локальні шрифти */
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Light.woff2") format("woff2"); font-weight:300; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Medium.woff2") format("woff2"); font-weight:500; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-SemiBold.woff2") format("woff2"); font-weight:600; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Bold.woff2") format("woff2"); font-weight:700; font-style:normal; font-display:swap; }
 
-/* мінімальна база лише для shadow-root */
+/* ── мінімальна база лише для shadow-root компонентів ───────── */
 @layer base {
   :root { color-scheme: light dark; }
 
@@ -25,7 +28,6 @@
     font-family:"Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
   }
 
-  /* темна тема через системні налаштування */
   @media (prefers-color-scheme: dark) {
     :host {
       --bg-primary:#1f2937;
@@ -39,30 +41,26 @@
       --button-hover:#2563eb;
     }
   }
-
-  *,*::before,*::after { box-sizing:border-box; }
-  a,button,input,select,textarea {
-    transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
-  }
-  input,select,textarea {
-    background-color:var(--input-bg) !important;
-    border-color:var(--input-border) !important;
-    color:var(--text-primary) !important;
-  }
 }
 
+/* Утиліти для shadow-root */
 @layer components {
-  .bg-surface { background-color:var(--bg-primary) !important; }
-  .text-primary { color:var(--text-primary) !important; }
-  .text-secondary { color:var(--text-secondary) !important; }
-  .border-muted { border-color:var(--border-color) !important; }
+  .bg-surface { background-color:var(--bg-primary); }
+  .text-primary { color:var(--text-primary); }
+  .text-secondary { color:var(--text-secondary); }
+  .border-muted { border-color:var(--border-color); }
 
   .input-field {
-    @apply w-full rounded-lg p-3 border placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply w-full rounded-lg p-3 border placeholder-gray-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    background-color:var(--input-bg);
+    border-color:var(--input-border);
+    color:var(--text-primary);
   }
+
   .btn-primary {
     @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium text-white shadow;
+    background-color:var(--button-bg);
   }
-  .btn-primary { background-color:var(--button-bg); }
   .btn-primary:hover { background-color:var(--button-hover); }
 }

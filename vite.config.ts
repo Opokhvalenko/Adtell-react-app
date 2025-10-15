@@ -1,8 +1,8 @@
-// vite.config.ts
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 import type { PluginOption } from "vite";
@@ -11,7 +11,7 @@ import checker from "vite-plugin-checker";
 import compression from "vite-plugin-compression";
 import inspect from "vite-plugin-inspect";
 import svgr from "vite-plugin-svgr";
-import { defineConfig } from "vitest/config"; // ← важливо: з vitest/config
+import { defineConfig } from "vitest/config";
 
 /* ───────────────────────── virtual:ads-config ────────────────────────── */
 function adsVirtualConfig(env: Record<string, string>): PluginOption {
@@ -160,7 +160,7 @@ function virtualBuildInfo(): PluginOption {
 	};
 }
 
-/* ────────────────────────────── Vite + Vitest ────────────────────────── */
+// ────────────────────────────── Vite + Vitest ──────────────────────────
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), "");
 	const isDev = mode !== "production";
@@ -187,10 +187,7 @@ export default defineConfig(({ mode }) => {
 			port: Number(env.VITE_DEV_PORT || 5173),
 			strictPort: true,
 			proxy: {
-				// нове: щоб CSS з бека працював у фреймі
 				"/public": { target: API_TARGET, changeOrigin: true },
-
-				// аналітика
 				"/api/stats": {
 					target: API_TARGET,
 					changeOrigin: true,
@@ -208,7 +205,6 @@ export default defineConfig(({ mode }) => {
 				},
 				"/api": { target: API_TARGET, changeOrigin: true },
 
-				// решта як було…
 				"/feed": {
 					target: API_TARGET,
 					changeOrigin: true,
@@ -252,6 +248,8 @@ export default defineConfig(({ mode }) => {
 		},
 
 		plugins: [
+			// ✅ NEW: tailwindcss() має бути на початку
+			tailwindcss(),
 			svgr(),
 			adsVirtualConfig(env),
 			adsModulePlugin(env),
@@ -292,9 +290,7 @@ export default defineConfig(({ mode }) => {
 			chunkSizeWarningLimit: 1000,
 			rollupOptions: {
 				output: {
-					manualChunks: {
-						vendor: ["react", "react-dom", "react-router-dom"],
-					},
+					manualChunks: { vendor: ["react", "react-dom", "react-router-dom"] },
 				},
 			},
 		},
@@ -303,7 +299,6 @@ export default defineConfig(({ mode }) => {
 			__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
 		},
 
-		// ───────── Vitest ─────────
 		test: {
 			globals: true,
 			environment: "jsdom",
@@ -312,8 +307,6 @@ export default defineConfig(({ mode }) => {
 			mockReset: true,
 			restoreMocks: true,
 			coverage: { reporter: ["text", "html"], reportsDirectory: "coverage" },
-
-			// ⬇⬇⬇ головне — alias для virtual:*
 			alias: {
 				"virtual:ads-config": path.resolve(
 					__dirname,
