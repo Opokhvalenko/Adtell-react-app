@@ -1,3 +1,3 @@
 declare module "adclient" {
-	export * from "/modules/adserver.client.js";
+	export * from "/modules/a.client.js";
 }

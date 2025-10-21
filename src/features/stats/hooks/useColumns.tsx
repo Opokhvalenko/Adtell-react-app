@@ -5,7 +5,6 @@ import type { MetricKey, StatRow } from "../types";
 
 const column = createColumnHelper<StatRow>();
 
-/** Допоміжні типи/хелпери */
 type MetricMap = Partial<Record<MetricKey, number | string | null | undefined>>;
 
 function safeDate(r: StatRow): string {
@@ -30,20 +29,26 @@ function getMetric(row: StatRow, key: MetricKey): number | null {
 }
 
 export function useColumns(selectedMetrics: MetricKey[]) {
-	// Виміри (дата/година/подія/тощо)
 	const dimCols = useMemo(
 		() => [
 			column.accessor((r) => safeDate(r), {
 				id: "date",
 				header: "Date",
 				cell: (info) => (
-					<span className="font-mono">{String(info.getValue() ?? "")}</span>
+					<span className="font-mono tabular-nums">
+						{String(info.getValue() ?? "")}
+					</span>
 				),
 				enableSorting: true,
 			}),
 			column.accessor((r) => safeHour(r), {
 				id: "hour",
 				header: "Hour",
+				cell: (info) => (
+					<span className="font-mono tabular-nums">
+						{String(info.getValue() ?? "")}
+					</span>
+				),
 				enableSorting: true,
 			}),
 			column.accessor((r) => r.event ?? "", {
@@ -70,7 +75,6 @@ export function useColumns(selectedMetrics: MetricKey[]) {
 		[],
 	);
 
-	// Обрані метрики
 	const metricCols = useMemo(
 		() =>
 			selectedMetrics.map((k) =>
@@ -93,7 +97,6 @@ export function useColumns(selectedMetrics: MetricKey[]) {
 		[selectedMetrics],
 	);
 
-	// Остаточний масив колонок для таблиці
 	const columns = useMemo(
 		() =>
 			[...dimCols, ...metricCols] as unknown as ColumnDef<StatRow, unknown>[],

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import LoginForm from "./LoginForm";
 
 // Mock the auth store
@@ -12,44 +12,38 @@ vi.mock("../../store/auth", () => ({
 	}),
 }));
 
-describe("LoginForm Component", () => {
-	let queryClient: QueryClient;
-
-	beforeEach(() => {
-		queryClient = new QueryClient({
-			defaultOptions: {
-				queries: {
-					retry: false,
-				},
-			},
-		});
+function renderLogin() {
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: { retry: false },
+		},
 	});
 
-	it("renders login form", () => {
-		render(
-			<QueryClientProvider client={queryClient}>
-				<MemoryRouter>
-					<LoginForm />
-				</MemoryRouter>
-			</QueryClientProvider>,
-		);
+	return render(
+		<QueryClientProvider client={queryClient}>
+			<MemoryRouter>
+				<LoginForm />
+			</MemoryRouter>
+		</QueryClientProvider>,
+	);
+}
 
-		expect(screen.getByRole("textbox")).toBeInTheDocument();
-		expect(screen.getAllByDisplayValue("")).toHaveLength(2);
+describe("LoginForm Component", () => {
+	it("renders login form", () => {
+		renderLogin();
+
+		expect(screen.getByRole("heading", { name: /login/i })).toBeInTheDocument();
+		expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+		expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /login/i })).toBeInTheDocument();
+
+		expect(screen.getAllByDisplayValue("")).toHaveLength(2);
 	});
 
 	it("shows validation errors for empty fields", async () => {
-		render(
-			<QueryClientProvider client={queryClient}>
-				<MemoryRouter>
-					<LoginForm />
-				</MemoryRouter>
-			</QueryClientProvider>,
-		);
+		renderLogin();
 
-		const submitButton = screen.getByRole("button", { name: /login/i });
-		fireEvent.click(submitButton);
+		fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
 		await waitFor(() => {
 			expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument();
@@ -60,19 +54,12 @@ describe("LoginForm Component", () => {
 	});
 
 	it("shows validation error for invalid email", async () => {
-		render(
-			<QueryClientProvider client={queryClient}>
-				<MemoryRouter>
-					<LoginForm />
-				</MemoryRouter>
-			</QueryClientProvider>,
-		);
+		renderLogin();
 
-		const emailInput = screen.getByRole("textbox", { name: "" });
-		const submitButton = screen.getByRole("button", { name: /login/i });
-
+		const emailInput = screen.getByRole("textbox", { name: /email/i });
 		fireEvent.change(emailInput, { target: { value: "invalid-email" } });
-		fireEvent.click(submitButton);
+
+		fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
 		await waitFor(() => {
 			expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument();

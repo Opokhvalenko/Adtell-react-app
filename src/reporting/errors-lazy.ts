@@ -11,7 +11,6 @@ const load = (): Promise<{ reportError: Reporter }> => {
 };
 
 export function reportError(err: unknown, extra?: Extra) {
-	// навмисно не await-имо — «ліниве» підвантаження
 	load().then((m) => m.reportError?.(err, extra));
 }
 

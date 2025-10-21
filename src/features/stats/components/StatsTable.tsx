@@ -3,11 +3,12 @@ import {
 	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
+	getPaginationRowModel,
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { MetricKey, StatRow } from "../types";
 
 type Props = {
@@ -18,25 +19,21 @@ type Props = {
 	error?: unknown;
 };
 
+/* helpers */
 type MaybeId = { id?: unknown };
 type MaybeAccessorKey = { accessorKey?: string | number | symbol };
-
 function getColId(c: ColumnDef<StatRow, unknown>, index: number): string {
 	const id = (c as MaybeId).id;
 	if (typeof id === "string" && id) return id;
-
 	const ak = (c as MaybeAccessorKey).accessorKey;
 	if (
 		typeof ak === "string" ||
 		typeof ak === "number" ||
 		typeof ak === "symbol"
-	) {
+	)
 		return String(ak);
-	}
-
 	return `col-${index}`;
 }
-
 function errMessage(err: unknown): string {
 	if (err && typeof err === "object" && "message" in err) {
 		const m = (err as { message?: unknown }).message;
@@ -56,12 +53,25 @@ export function StatsTable({
 	isLoading,
 	error,
 }: Props) {
+	const [pageIndex, setPageIndex] = useState(0);
+	const [pageSize, setPageSize] = useState(100);
+
 	const table = useReactTable({
 		data,
 		columns,
+		state: { pagination: { pageIndex, pageSize } },
+		onPaginationChange: (updater) => {
+			const next =
+				typeof updater === "function"
+					? updater({ pageIndex, pageSize })
+					: updater;
+			setPageIndex(next.pageIndex);
+			setPageSize(next.pageSize);
+		},
 		getCoreRowModel: getCoreRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		getSortedRowModel: getSortedRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
 	});
 
 	const metricIds = useMemo(
@@ -71,25 +81,26 @@ export function StatsTable({
 
 	const widthById: Record<string, string> = {
 		date: "9rem",
-		hour: "6rem",
-		event: "10rem",
+		hour: "7rem",
+		event: "12rem",
 		adapter: "10rem",
-		adUnitCode: "10rem",
+		adUnitCode: "11rem",
 		creativeId: "9rem",
 	};
+	const metricWidth = "8.5rem";
 
 	return (
-		<div className="overflow-x-auto rounded-xl border bg-white/60 dark:bg-white/5 shadow-sm backdrop-blur-sm">
-			<table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
+		<div className="overflow-x-auto rounded-2xl border bg-white/70 dark:bg-white/5 shadow-sm">
+			<table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
 				<colgroup>
 					{columns.map((c, i) => {
 						const id = getColId(c, i);
-						const w = widthById[id];
-						return <col key={id} style={w ? { width: w } : undefined} />;
+						const w = widthById[id] || metricWidth;
+						return <col key={id} style={{ width: w }} />;
 					})}
 				</colgroup>
 
-				<thead className="bg-gray-50/80 dark:bg-gray-900/80 sticky top-0 z-10">
+				<thead className="sticky top-0 z-10">
 					{table.getHeaderGroups().map((hg) => (
 						<tr key={hg.id}>
 							{hg.headers.map((h) => {
@@ -107,42 +118,58 @@ export function StatsTable({
 													? "descending"
 													: "none"
 										}
-										className="p-2 text-left border-b text-[12px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-100 bg-white/80 dark:bg-gray-800/80 sticky top-0"
+										className="bg-gray-50/90 dark:bg-gray-900/80 backdrop-blur supports-[backdrop-filter]:bg-gray-50/70 sticky top-0 border-b"
 									>
-										<button
-											type="button"
-											className="cursor-pointer select-none flex items-center gap-1 disabled:opacity-50"
-											onClick={canSort && sortHandler ? sortHandler : undefined}
-											onKeyDown={(e) => {
-												if (!canSort || !sortHandler) return;
-												if (e.key === "Enter" || e.key === " ") {
-													e.preventDefault();
-													sortHandler(e as unknown as React.MouseEvent);
+										<div className="flex items-center justify-between px-3 pt-2">
+											<button
+												type="button"
+												className="cursor-pointer select-none flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-100"
+												onClick={
+													canSort && sortHandler ? sortHandler : undefined
 												}
-											}}
-											aria-label="Sort column"
-											disabled={!canSort}
-										>
-											{flexRender(h.column.columnDef.header, h.getContext())}
-											{
-												({ asc: "↑", desc: "↓", false: "" } as const)[
-													String(sort || "false") as "asc" | "desc" | "false"
-												]
-											}
-										</button>
+												onKeyDown={(e) => {
+													if (!canSort || !sortHandler) return;
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														sortHandler(e as unknown as React.MouseEvent);
+													}
+												}}
+												aria-label="Sort column"
+												disabled={!canSort}
+											>
+												{flexRender(h.column.columnDef.header, h.getContext())}
+												<span className="ml-1 text-xs">
+													{
+														({ asc: "↑", desc: "↓", false: "" } as const)[
+															String(sort || "false") as
+																| "asc"
+																| "desc"
+																| "false"
+														]
+													}
+												</span>
+											</button>
+
+											<div className="flex items-center gap-2 text-gray-300">
+												<span aria-hidden>📈</span>
+												<span aria-hidden>📌</span>
+											</div>
+										</div>
 
 										{h.column.getCanFilter() && (
-											<input
-												className="mt-1 w-full h-8 rounded-md border px-2 text-xs placeholder:text-gray-400 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-300"
-												placeholder="Filter…"
-												aria-label={`Filter ${String(
-													h.column.columnDef.header ?? h.column.id,
-												)}`}
-												value={(h.column.getFilterValue() as string) ?? ""}
-												onChange={(e) =>
-													h.column.setFilterValue(e.target.value)
-												}
-											/>
+											<div className="px-3 pb-2">
+												<input
+													className="w-full h-8 rounded-md border px-2 text-xs placeholder:text-gray-400 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-300"
+													placeholder="Filter…"
+													aria-label={`Filter ${String(
+														h.column.columnDef.header ?? h.column.id,
+													)}`}
+													value={(h.column.getFilterValue() as string) ?? ""}
+													onChange={(e) =>
+														h.column.setFilterValue(e.target.value)
+													}
+												/>
+											</div>
 										)}
 									</th>
 								);
@@ -184,7 +211,10 @@ export function StatsTable({
 									return (
 										<td
 											key={cell.id}
-											className={`p-2 align-top ${isMetric ? "text-right tabular-nums" : ""}`}
+											className={[
+												"px-3 py-2 align-top whitespace-nowrap",
+												isMetric ? "text-right tabular-nums" : "",
+											].join(" ")}
 										>
 											{flexRender(
 												cell.column.columnDef.cell,
@@ -198,6 +228,78 @@ export function StatsTable({
 					)}
 				</tbody>
 			</table>
+
+			<div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-white/70 dark:bg-gray-900/50">
+				<div className="flex items-center gap-2">
+					<span className="text-sm text-gray-600 dark:text-gray-300">
+						Page Size:
+					</span>
+					<select
+						className="h-9 min-w-[72px] rounded-md border px-2 font-mono"
+						value={pageSize}
+						onChange={(e) => table.setPageSize(Number(e.target.value))}
+					>
+						{[25, 50, 100, 200, 500].map((n) => (
+							<option key={n} value={n}>
+								{n}
+							</option>
+						))}
+					</select>
+				</div>
+
+				<div className="text-sm text-gray-600 dark:text-gray-300">
+					{(() => {
+						const total = data.length;
+						const start = Math.min(total, pageIndex * pageSize + 1);
+						const end = Math.min(total, (pageIndex + 1) * pageSize);
+						return `${start} to ${end} of ${total}`;
+					})()}
+				</div>
+
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						onClick={() => table.firstPage()}
+						disabled={!table.getCanPreviousPage()}
+						className="h-9 w-9 rounded-md border disabled:opacity-40"
+						aria-label="First page"
+					>
+						«
+					</button>
+					<button
+						type="button"
+						onClick={() => table.previousPage()}
+						disabled={!table.getCanPreviousPage()}
+						className="h-9 w-9 rounded-md border disabled:opacity-40"
+						aria-label="Prev page"
+					>
+						‹
+					</button>
+					<div className="px-2 text-sm">
+						Page {pageIndex + 1} of {Math.max(1, table.getPageCount())}
+					</div>
+					<button
+						type="button"
+						onClick={() => table.nextPage()}
+						disabled={!table.getCanNextPage()}
+						className="h-9 w-9 rounded-md border disabled:opacity-40"
+						aria-label="Next page"
+					>
+						›
+					</button>
+					<button
+						type="button"
+						onClick={() => table.lastPage()}
+						disabled={!table.getCanNextPage()}
+						className="h-9 w-9 rounded-md border disabled:opacity-40"
+						aria-label="Last page"
+					>
+						»
+					</button>
+				</div>
+			</div>
 		</div>
 	);
 }
+
+export default StatsTable;

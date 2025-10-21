@@ -5,13 +5,20 @@ const src = import.meta.env.DEV
 	? "/create-lineitem"
 	: `${API_ORIGIN}/create-lineitem`;
 
-type ResizeMsg = { type: "resize"; height: number };
-type IframeMsg = ResizeMsg | { type: "ack" } | { type: "ready" };
+type Msg =
+	| { type: "resize"; height: number }
+	| { type: "ready" }
+	| { type: "ack" };
 
-function isResizeMsg(d: unknown): d is ResizeMsg {
-	if (typeof d !== "object" || d === null) return false;
-	const obj = d as Record<string, unknown>;
-	return obj.type === "resize" && typeof obj.height === "number";
+const MIN_HEIGHT = 600;
+
+// type guard для resize-повідомлення
+function isResizeMsg(
+	d: Msg | unknown,
+): d is { type: "resize"; height: number } {
+	return (
+		!!d && typeof d === "object" && (d as { type?: unknown }).type === "resize"
+	);
 }
 
 export default function CreateAdShadow() {
@@ -22,42 +29,74 @@ export default function CreateAdShadow() {
 	useEffect(() => {
 		const expected = new URL(src, window.location.origin).origin;
 
-		const sendTheme = (win: Window) => {
+		let lastDark: boolean | undefined;
+		let debounceTimer: number | undefined;
+
+		const postTheme = (win: Window) => {
 			const dark = document.documentElement.classList.contains("dark");
+			if (dark === lastDark) return;
+			lastDark = dark;
 			try {
 				win.postMessage({ type: "theme", dark }, expected);
 			} catch {
-				/* ignore */
+				// ignore
 			}
 		};
 
-		const onMessage = (e: MessageEvent<IframeMsg>) => {
+		const scheduleTheme = (win: Window) => {
+			if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+			debounceTimer = window.setTimeout(() => postTheme(win), 50);
+		};
+
+		const onMessage = (e: MessageEvent<Msg>) => {
 			const win = frameRef.current?.contentWindow;
-			if (!win || e.source !== win) return;
+			if (!win || e.source !== win || e.origin !== expected) return;
 
-			if (e.origin !== expected) return;
-
-			if (isResizeMsg(e.data)) {
+			if (isResizeMsg(e.data) && typeof e.data.height === "number") {
 				const el = frameRef.current;
-				if (el?.style) el.style.height = `${Math.max(900, e.data.height)}px`;
-			} else if (e.data?.type === "ready" || e.data?.type === "ack") {
-				sendTheme(win);
+				if (el?.style)
+					el.style.height = `${Math.max(MIN_HEIGHT, e.data.height)}px`;
+				return;
+			}
+
+			if (e.data?.type === "ready") {
+				lastDark = undefined;
+				postTheme(win);
 			}
 		};
 
 		const mo = new MutationObserver(() => {
 			const win = frameRef.current?.contentWindow;
-			if (win) sendTheme(win);
+			if (win) scheduleTheme(win);
 		});
 		mo.observe(document.documentElement, {
 			attributes: true,
 			attributeFilter: ["class"],
 		});
 
+		const onStorage = (e: StorageEvent) => {
+			if (e.key === "theme") {
+				const win = frameRef.current?.contentWindow;
+				if (win) scheduleTheme(win);
+			}
+		};
+
+		// типізуємо кастомну подію як EventListener
+		const onThemeCustom: EventListener = () => {
+			const win = frameRef.current?.contentWindow;
+			if (win) scheduleTheme(win);
+		};
+
 		window.addEventListener("message", onMessage);
+		window.addEventListener("storage", onStorage);
+		window.addEventListener("themechange", onThemeCustom);
+
 		return () => {
 			window.removeEventListener("message", onMessage);
+			window.removeEventListener("storage", onStorage);
+			window.removeEventListener("themechange", onThemeCustom);
 			mo.disconnect();
+			if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
 		};
 	}, []);
 
@@ -89,7 +128,7 @@ export default function CreateAdShadow() {
 				)}
 				{broken && (
 					<div className="p-6 text-sm text-red-600 dark:text-red-400">
-						Не вдалося завантажити форму. Відкрий у новій вкладці:{" "}
+						Couldn’t load the form. Open it in a new tab:{" "}
 						<a
 							className="underline"
 							href={src}
@@ -100,6 +139,7 @@ export default function CreateAdShadow() {
 						</a>
 					</div>
 				)}
+
 				<iframe
 					ref={frameRef}
 					src={src}
@@ -110,9 +150,7 @@ export default function CreateAdShadow() {
 					referrerPolicy="strict-origin-when-cross-origin"
 					allow="clipboard-read; clipboard-write"
 					loading="lazy"
-					onLoad={() => {
-						setLoading(false);
-					}}
+					onLoad={() => setLoading(false)}
 					onError={() => {
 						setLoading(false);
 						setBroken(true);
@@ -121,9 +159,9 @@ export default function CreateAdShadow() {
 			</div>
 
 			<p className="text-center text-xs text-slate-500">
-				Якщо форма не відобразилась, відкрий її{" "}
+				If the form doesn’t appear, open it{" "}
 				<a href={src} target="_blank" rel="noreferrer" className="underline">
-					у новій вкладці
+					in a new tab
 				</a>
 				.
 			</p>

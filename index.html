@@ -2,31 +2,41 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-<link rel="icon" href="/images/favicon.ico" sizes="any">
-<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
-<link rel="mask-icon" href="/images/safari-pinned-tab.svg" color="#4f46e5">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1221">
+    <link rel="icon" href="/images/favicon.ico" sizes="any">
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/images/safari-pinned-tab.svg" color="#4f46e5">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1221">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <script>
-  (() => {
-    const saved = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = saved ? saved === "dark" : prefersDark;
-    document.documentElement.classList.toggle("dark", isDark);
-  })();
-</script>
+      (function () {
+        try {
+          var KEY = "theme";         
+          var saved = localStorage.getItem(KEY) || "system";
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var wantDark = saved === "dark" || (saved === "system" && prefersDark);
 
-   <script>
-  window.__ads = { endpoint: "https://addtell-backend.onrender.com" };
-</script>
-<script type="module" src="/modules/a.client.js"></script>
+          var root = document.documentElement;
+          root.classList.toggle("dark", wantDark);
+          root.style.colorScheme = wantDark ? "dark" : "light";
 
-    <link rel="preload" href="/fonts/OpenSans-Medium.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/OpenSans-Bold.woff2" as="font" type="font/woff2" crossorigin>
+          window.__THEME_BOOT__ = { saved: saved, wantDark: wantDark };
+        } catch {}
+      })();
+    </script>
+
+    <script>
+      window.__ads = { endpoint: "" };
+    </script>
+
+    <script>
+      window.pbjs = window.pbjs || { que: [] };
+    </script>
+
+    <script defer src="/prebid/prebid.js"></script>
   </head>
   <body>
     <div id="root"></div>

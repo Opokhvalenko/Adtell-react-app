@@ -1,6 +1,5 @@
 import { API_BASE } from "./apiBase";
 
-/** Внутрішня модель для UI */
 export interface FeedItem {
 	id: string;
 	title: string;
@@ -13,7 +12,6 @@ export interface FeedResponse {
 	title?: string;
 }
 
-/** Схема того, що повертає бекенд */
 interface ApiFeedItem {
 	id: string;
 	title: string;

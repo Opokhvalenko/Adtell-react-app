@@ -17,7 +17,6 @@ import "virtual:ads-bridge";
 const ENABLE_REPORTING = import.meta.env.VITE_ENABLE_REPORTING === "true";
 const ENABLE_ADS = (import.meta.env.VITE_ENABLE_ADS ?? "true") === "true";
 
-/* run fn when browser is idle-ish (no render blocking) */
 function scheduleIdle(fn: () => void, timeout = 1500) {
 	if ("requestIdleCallback" in window) {
 		window.requestIdleCallback?.(fn, { timeout });
@@ -29,14 +28,12 @@ function scheduleIdle(fn: () => void, timeout = 1500) {
 		: window.addEventListener("load", run, { once: true });
 }
 
-/* wait for a couple of paints so React mounts content */
 async function afterNextPaints(times = 2): Promise<void> {
 	for (let i = 0; i < times; i++) {
 		await new Promise<void>((r) => requestAnimationFrame(() => r()));
 	}
 }
 
-/* if tab is hidden — delay heavy work until visible */
 async function whenVisible(): Promise<void> {
 	if (document.visibilityState !== "hidden") return;
 	await new Promise<void>((resolve) => {
@@ -49,8 +46,6 @@ async function whenVisible(): Promise<void> {
 		document.addEventListener("visibilitychange", on);
 	});
 }
-
-/* ---------------- bootstrap ---------------- */
 
 try {
 	initSentry();
@@ -67,14 +62,10 @@ if (ENABLE_REPORTING) {
 
 try {
 	report("pageLoad");
-} catch {
-	/* no-op */
-}
+} catch {}
 
-/* uid for ads as early as possible */
 ensureAdUid();
 
-/* lazy-load ads module safely */
 scheduleIdle(() => {
 	(async () => {
 		try {
@@ -94,7 +85,6 @@ scheduleIdle(() => {
 			const mod = await import("virtual:ads-module");
 			console.log("[main] Ads module loaded:", Object.keys(mod));
 
-			// give React a moment to mount slots
 			await afterNextPaints(2);
 
 			if (typeof mod.initAds === "function") {
@@ -108,8 +98,6 @@ scheduleIdle(() => {
 		}
 	})();
 });
-
-/* ---------------- mount ---------------- */
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element #root not found");
@@ -129,7 +117,6 @@ root.render(
 	</React.StrictMode>,
 );
 
-/* HMR cleanup */
 if (import.meta.hot) {
 	import.meta.hot.dispose(() => {
 		root.unmount();

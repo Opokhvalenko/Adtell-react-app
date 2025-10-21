@@ -5,13 +5,16 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
-import type { PluginOption } from "vite";
+import type { PluginOption, ProxyOptions } from "vite";
 import { loadEnv } from "vite";
 import checker from "vite-plugin-checker";
 import compression from "vite-plugin-compression";
 import inspect from "vite-plugin-inspect";
 import svgr from "vite-plugin-svgr";
 import { defineConfig } from "vitest/config";
+
+/** __dirname для ESM */
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /* ───────────────────────── virtual:ads-config ────────────────────────── */
 function adsVirtualConfig(env: Record<string, string>): PluginOption {
@@ -33,9 +36,43 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
         export const ADTELLIGENT_AID = ${n(env.VITE_ADTELLIGENT_AID)};
         export const GAM_NETWORK_CALLS = ${b(env.VITE_GAM_NETWORK)};
         export const ENABLE_REPORTING = ${b(env.VITE_ENABLE_REPORTING)};
-		export const ENABLE_POKHVALENKO = ${b(env.VITE_ENABLE_POKHVALENKO)};
+        export const ENABLE_POKHVALENKO = ${b(env.VITE_ENABLE_POKHVALENKO)};
         export const POKHVALENKO_AID = ${n(env.VITE_POKHVALENKO_AID)};
       `.trim();
+		},
+	};
+}
+
+/* ─────────────────────── локальний мок /api/pokh/bid ─────────────────── */
+function mockPokhPlugin(env: Record<string, string>): PluginOption {
+	const DEFAULT_CPM = Number(env.VITE_POKHVALENKO_CPM ?? 0.72) || 0.72;
+	const enabledByEnv =
+		String(env.VITE_MOCK_POKH ?? "true").toLowerCase() !== "false";
+
+	return {
+		name: "mock-pokhvalenko-bid-endpoint",
+		apply: "serve",
+		configureServer(server) {
+			if (!enabledByEnv) return;
+
+			server.middlewares.use("/api/pokh/bid", (req, res) => {
+				try {
+					const u = new URL(req.url ?? "", "http://local/");
+					const qs = u.searchParams;
+					const cpm = Number(qs.get("cpm") ?? DEFAULT_CPM) || DEFAULT_CPM;
+
+					res.setHeader("Access-Control-Allow-Origin", "*");
+					res.setHeader("Content-Type", "application/json");
+
+					const adm = qs.get("adm");
+					res.end(JSON.stringify({ cpm, adm: adm || null }));
+				} catch {
+					res.statusCode = 200;
+					res.setHeader("Access-Control-Allow-Origin", "*");
+					res.setHeader("Content-Type", "application/json");
+					res.end(JSON.stringify({ cpm: DEFAULT_CPM, adm: null }));
+				}
+			});
 		},
 	};
 }
@@ -50,7 +87,6 @@ function analyticsModulePlugin(env: Record<string, string>): PluginOption {
 			if (id !== "virtual:ads-analytics") return null;
 
 			const enabled = String(env.VITE_ENABLE_REPORTING || "false") === "true";
-			// якщо репортинг вимкнено — повертаємо стаби
 			if (!enabled) {
 				return `
           export const initAnalytics = async () => {};
@@ -60,7 +96,6 @@ function analyticsModulePlugin(env: Record<string, string>): PluginOption {
 			}
 
 			const file = path.resolve(process.cwd(), "modules/analytics.module.js");
-			// якщо файл не існує — теж стаби (щоб білд не падав)
 			if (!fs.existsSync(file)) {
 				return `
           export const initAnalytics = async () => {};
@@ -69,7 +104,7 @@ function analyticsModulePlugin(env: Record<string, string>): PluginOption {
         `.trim();
 			}
 
-			const resolved = file.replace(/\\\\/g, "/"); // Windows path → POSIX
+			const resolved = file.replace(/\\\\/g, "/");
 			return `
         import * as real from ${JSON.stringify(resolved)};
         export const initAnalytics = real.initAnalytics ?? (async () => {});
@@ -169,6 +204,10 @@ export default defineConfig(({ mode }) => {
 	const isCI = !!env.CI;
 
 	const API_TARGET = env.VITE_API_TARGET || "http://localhost:3000";
+	const CLIENT_ORIGIN = env.VITE_APP_ORIGIN || "http://localhost:5173";
+
+	const PROXY_ADS_DEBUG =
+		String(env.VITE_PROXY_ADS_DEBUG || "false") === "true";
 
 	const enableSentry = !!env.VITE_SENTRY_DSN;
 	const uploadSourcemaps =
@@ -176,6 +215,77 @@ export default defineConfig(({ mode }) => {
 
 	const releaseName =
 		env.SENTRY_RELEASE || env.GITHUB_SHA || `build-${Date.now()}`;
+
+	const proxy: Record<string, ProxyOptions> = {
+		"/assets": { target: API_TARGET, changeOrigin: true },
+		"/public": { target: API_TARGET, changeOrigin: true },
+
+		"/api/stats": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) =>
+				path.replace(/^\/api\/stats/, "/api/analytics/stats"),
+		},
+		"/api/report": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) =>
+				path.replace(/^\/api\/report/, "/api/analytics/events"),
+		},
+		"/analytics": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) => path.replace(/^\/analytics/, "/api/analytics"),
+		},
+
+		"/api": { target: API_TARGET, changeOrigin: true },
+
+		"/feed": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) => path.replace(/^\/feed/, "/api/feed"),
+		},
+		"/article": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) => path.replace(/^\/article/, "/api/article"),
+		},
+		"/auth": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) => path.replace(/^\/auth/, "/api/auth"),
+		},
+		"/upload": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) => path.replace(/^\/upload/, "/api/upload"),
+		},
+		"/adserver": {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) => path.replace(/^\/adserver/, "/api"),
+		},
+
+		"/api/bid": { target: API_TARGET, changeOrigin: true },
+		"/docs": { target: API_TARGET, changeOrigin: true },
+		"/uploads": { target: API_TARGET, changeOrigin: true },
+		"/create-lineitem": { target: API_TARGET, changeOrigin: true },
+		"/create": { target: API_TARGET, changeOrigin: true },
+	};
+
+	if (PROXY_ADS_DEBUG) {
+		proxy["/ads-debug"] = {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) => path.replace(/^\/ads-debug/, "/api/ads-debug"),
+		};
+		proxy["/ads/debug"] = {
+			target: API_TARGET,
+			changeOrigin: true,
+			rewrite: (path: string) =>
+				path.replace(/^\/ads\/debug/, "/api/ads/debug"),
+		};
+	}
 
 	return {
 		envPrefix: "VITE_",
@@ -187,70 +297,14 @@ export default defineConfig(({ mode }) => {
 		server: {
 			port: Number(env.VITE_DEV_PORT || 5173),
 			strictPort: true,
-			proxy: {
-				"/assets": { target: API_TARGET, changeOrigin: true },
-				"/public": { target: API_TARGET, changeOrigin: true },
-				"/api/stats": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/api\/stats/, "/api/analytics/stats"),
-				},
-				"/api/report": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/api\/report/, "/api/analytics/events"),
-				},
-				"/analytics": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/analytics/, "/api/analytics"),
-				},
-				"/api": { target: API_TARGET, changeOrigin: true },
-
-				"/feed": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/feed/, "/api/feed"),
-				},
-				"/article": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/article/, "/api/article"),
-				},
-				"/auth": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/auth/, "/api/auth"),
-				},
-				"/upload": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/upload/, "/api/upload"),
-				},
-				"/adserver": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/adserver/, "/api"),
-				},
-				"/api/bid": { target: API_TARGET, changeOrigin: true },
-				"/docs": { target: API_TARGET, changeOrigin: true },
-				"/uploads": { target: API_TARGET, changeOrigin: true },
-				"/create-lineitem": { target: API_TARGET, changeOrigin: true },
-				"/create": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/create/, "/api/create"),
-				},
-				"/ads": {
-					target: API_TARGET,
-					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/ads/, "/api/ads"),
-				},
-			},
+			proxy,
+			fs: { strict: false },
+			origin: CLIENT_ORIGIN,
 		},
 
 		plugins: [
-			// ✅ NEW: tailwindcss() має бути на початку
+			mockPokhPlugin(env),
+
 			tailwindcss(),
 			svgr(),
 			adsVirtualConfig(env),
@@ -260,7 +314,7 @@ export default defineConfig(({ mode }) => {
 			react(),
 			checker({ typescript: true }),
 			virtualBuildInfo(),
-			!isDev &&
+			mode === "production" &&
 				compression({
 					algorithm: "brotliCompress",
 					ext: ".br",

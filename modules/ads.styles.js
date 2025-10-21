@@ -18,7 +18,6 @@ export const ADS_KEYFRAMES_CSS =
 
 export const ADS_SIDE_FIXED_CSS = ".ads-side-fixed{position:fixed;z-index:30}";
 
-// Опційно: house creative (якщо використовуєш у google.only.js)
 export const ADS_HOUSE_CSS = `
 .ads-house{position:absolute;inset:0;border-radius:12px;overflow:hidden}
 .ads-house a{display:block;width:100%;height:100%;text-decoration:none}
