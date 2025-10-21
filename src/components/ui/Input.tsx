@@ -1,4 +1,5 @@
-import { forwardRef } from "react";
+import { forwardRef, useId } from "react";
+import { cn } from "@/lib/cn";
 
 type Props = React.InputHTMLAttributes<HTMLInputElement> & {
 	label?: string;
@@ -6,52 +7,69 @@ type Props = React.InputHTMLAttributes<HTMLInputElement> & {
 	hint?: string;
 };
 
-const base = "w-full input-field";
-
 export default forwardRef<HTMLInputElement, Props>(function Input(
-	{ id, label, error, hint, className, ...props },
+	{ id, label, error, hint, className, required, type = "text", ...props },
 	ref,
 ) {
-	const errId = error ? `${id}-error` : undefined;
-	const hintId = hint ? `${id}-hint` : undefined;
+	const uid = useId();
+	const inputId = id ?? `in-${uid}`;
+	const errId = error ? `${inputId}-error` : undefined;
+	const hintId = hint ? `${inputId}-hint` : undefined;
+
+	const base = cn(
+		"block w-full rounded-lg px-3 py-2.5 text-sm shadow-sm",
+
+		"bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300",
+		"dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600",
+
+		"focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+
+		"disabled:opacity-50 disabled:cursor-not-allowed",
+	);
+
+	const invalid = !!error;
+	const invalidClasses = invalid
+		? "border-red-500 dark:border-red-500 focus:ring-red-500"
+		: "";
 
 	return (
 		<div className="space-y-2">
 			{label && (
 				<label
-					htmlFor={id}
-					className="block text-sm font-semibold text-gray-700 dark:text-gray-200"
+					htmlFor={inputId}
+					className="block text-sm font-semibold text-slate-700 dark:text-slate-200"
 				>
 					{label}
+					{required ? <span className="ml-0.5 text-red-600">*</span> : null}
 				</label>
 			)}
+
 			<input
 				ref={ref}
-				id={id}
-				aria-invalid={!!error}
+				id={inputId}
+				type={type}
+				required={required}
+				aria-invalid={invalid || undefined}
 				aria-describedby={
 					[errId, hintId].filter(Boolean).join(" ") || undefined
 				}
-				className={`${base} ${className ?? ""}`}
+				aria-errormessage={invalid ? errId : undefined}
+				className={cn(base, invalidClasses, className)}
 				{...props}
 			/>
-			{error && (
-				<div className="flex items-center gap-2">
-					<span className="text-red-500 text-sm">⚠️</span>
-					<p
-						id={errId}
-						className="text-sm text-red-500 font-medium"
-						aria-live="polite"
-					>
+
+			{invalid ? (
+				<div className="flex items-start gap-2" role="alert" aria-live="polite">
+					<span className="mt-0.5 text-red-500 text-sm">⚠️</span>
+					<p id={errId} className="text-sm text-red-600 dark:text-red-400">
 						{error}
 					</p>
 				</div>
-			)}
-			{!error && hint && (
-				<p id={hintId} className="text-xs text-gray-500 dark:text-gray-400">
+			) : hint ? (
+				<p id={hintId} className="text-xs text-slate-500 dark:text-slate-400">
 					{hint}
 				</p>
-			)}
+			) : null}
 		</div>
 	);
 });

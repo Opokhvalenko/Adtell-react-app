@@ -1,5 +1,3 @@
-// src/routes/AppRoutes.tsx (або замініть ваш поточний файл)
-
 import { lazy, type ReactElement, Suspense, useEffect } from "react";
 import {
 	createBrowserRouter,
@@ -15,7 +13,6 @@ import Loader from "@/components/Loader";
 import StatsPage from "@/features/stats/StatsPage";
 import { useAuth } from "@/store/auth";
 
-// ── Lazy pages ────────────────────────────────────────────────────────────────
 const Feed = lazy(() => import("@/features/news/Feed"));
 const ArticlePage = lazy(() => import("@/features/news/ArticlePage"));
 const NewsModal = lazy(() => import("@/features/news/NewsModal"));
@@ -25,10 +22,8 @@ const AdsDebugPage = lazy(() => import("@/features/ads/AdsDebugPage"));
 const CreateAdShadow = lazy(() => import("@/features/ads/CreateAdShadow"));
 const AdDemo = lazy(() => import("@/features/ads/AdDemo"));
 
-// Увімкнення дебаг-сторінки через env
 const ADS_DEBUG = import.meta.env.VITE_ADS_DEBUG === "true";
 
-// ── Route guards ─────────────────────────────────────────────────────────────
 function RequireAuth({ children }: { children: ReactElement }) {
 	const { isLoggedIn, isLoading } = useAuth();
 	const location = useLocation();
@@ -46,7 +41,6 @@ function PublicOnly({ children }: { children: ReactElement }) {
 	return !isLoggedIn ? children : <Navigate to="/" replace />;
 }
 
-// Ініціалізація авторизації на старті
 function AuthBootstrap({ children }: { children: React.ReactNode }) {
 	const { hydrate, isLoading } = useAuth();
 	useEffect(() => {
@@ -56,7 +50,6 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 	return <>{children}</>;
 }
 
-// ── Error boundary для роутів ────────────────────────────────────────────────
 function RouteError() {
 	const err = useRouteError();
 	const message =
@@ -74,7 +67,6 @@ function RouteError() {
 	);
 }
 
-// ── Routes config ────────────────────────────────────────────────────────────
 const routes = [
 	{
 		element: (
@@ -86,7 +78,6 @@ const routes = [
 		children: [
 			{ index: true, element: <Feed /> },
 
-			// Public
 			{
 				path: "login",
 				element: (
@@ -104,7 +95,6 @@ const routes = [
 				),
 			},
 
-			// Protected
 			{
 				path: "news/:id",
 				element: (
@@ -138,7 +128,6 @@ const routes = [
 				),
 			},
 
-			// Debug (умовно)
 			...(ADS_DEBUG ? [{ path: "ads-debug", element: <AdsDebugPage /> }] : []),
 		],
 	},
@@ -153,7 +142,6 @@ const routes = [
 	{ path: "*", element: <Navigate to="/" replace /> },
 ] satisfies RouteObject[];
 
-// ── Router ───────────────────────────────────────────────────────────────────
 const router = createBrowserRouter(routes, {
 	future: { v7_startTransition: true, v7_relativeSplatPath: true },
 });

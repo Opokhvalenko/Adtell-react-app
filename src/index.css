@@ -2,16 +2,14 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 
-/* Увімкнути dark-варіант через клас .dark на <html> */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Локальні шрифти */
+
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Light.woff2") format("woff2"); font-weight:300; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Medium.woff2") format("woff2"); font-weight:500; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-SemiBold.woff2") format("woff2"); font-weight:600; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Bold.woff2") format("woff2"); font-weight:700; font-style:normal; font-display:swap; }
 
-/* ── мінімальна база лише для shadow-root компонентів ───────── */
 @layer base {
   :root { color-scheme: light dark; }
 
@@ -43,7 +41,6 @@
   }
 }
 
-/* Утиліти для shadow-root */
 @layer components {
   .bg-surface { background-color:var(--bg-primary); }
   .text-primary { color:var(--text-primary); }

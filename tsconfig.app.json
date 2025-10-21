@@ -38,7 +38,7 @@
 		"src/vite-env.d.ts",
 		"modules",
 		"public/modules",
-		"public/prebid/prebid.js"
+		"public/prebid/prebid1.js"
 	],
 	"exclude": ["node_modules", "dist"]
 }

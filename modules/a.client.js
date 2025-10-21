@@ -1,6 +1,5 @@
 const G = globalThis;
 
-/* ───────────────── endpoint resolution ───────────────── */
 const selfUrl = new URL(import.meta.url, location.href);
 const QP_ENDPOINT = selfUrl.searchParams.get("endpoint") || "";
 const META_ENDPOINT =
@@ -80,7 +79,6 @@ export function renderBidInto(el, bid, { endpoint } = {}) {
 	}
 }
 
-/* ─────────────── глобальний доступ для креативів ─────────────── */
 G.adserver = Object.freeze({
 	requestBid,
 	renderBidInto,
@@ -88,3 +86,5 @@ G.adserver = Object.freeze({
 		G.__ads = { ...(G.__ads || {}), endpoint: String(v || "") };
 	},
 });
+
+export default { requestBid, renderBidInto };

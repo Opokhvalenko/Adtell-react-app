@@ -9,7 +9,7 @@ export type MetricKey =
 	| "revenue";
 
 export interface StatRow {
-	ts: string; // ISO початок бакета (година/день)
+	ts: string;
 	date?: string;
 	hour?: string; // "13:00"
 	event?: string;

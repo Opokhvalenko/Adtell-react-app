@@ -1,63 +1,56 @@
-const BIDDER = "pokhvalenko";
-const G = globalThis;
-
-function endpointBase() {
-	const ep = G.__ads?.endpoint?.replace?.(/\/$/, "");
-	try {
-		return ep ? new URL(ep) : new URL("/", location.origin);
-	} catch {
-		return new URL("http://localhost:3000");
-	}
-}
-
-export const spec = {
-	code: BIDDER,
+const pokhvalenkoBidAdapter = {
+	code: "pokhvalenko",
 	supportedMediaTypes: ["banner"],
 
-	// biome підказка: optional chaining
 	isBidRequestValid(bid) {
-		return !!(bid?.params && Number(bid.params.aid));
+		return !!bid?.mediaTypes?.banner && Number(bid?.params?.aid) > 0;
 	},
 
-	buildRequests(bidRequests, bidderRequest) {
-		const url = new URL("/api/bid", endpointBase());
-		const payload = {
-			auctionId: bidderRequest?.auctionId,
-			referer: bidderRequest?.refererInfo?.page,
-			bids: bidRequests.map((b) => ({
-				bidId: b.bidId,
-				adUnitCode: b.adUnitCode,
-				params: b.params,
-				sizes: b.mediaTypes?.banner?.sizes || b.sizes || [],
-			})),
-		};
-		return {
-			method: "POST",
-			url: url.toString(),
-			data: JSON.stringify(payload),
-			options: { contentType: "application/json" },
-		};
+	buildRequests(validBidRequests, bidderRequest) {
+		return validBidRequests.map((bid) => {
+			const size = bid.mediaTypes?.banner?.sizes?.[0] ||
+				bid.sizes?.[0] || [300, 250];
+			const [w, h] = size;
+			const url =
+				`${location.origin}/api/pokh/bid?w=${w}&h=${h}&aid=${encodeURIComponent(bid.params.aid)}` +
+				`&bidId=${encodeURIComponent(bid.bidId)}&auctionId=${encodeURIComponent(bidderRequest?.auctionId || "")}`;
+			return { method: "GET", url, bidRequest: bid };
+		});
 	},
 
-	interpretResponse(serverResponse) {
-		const body = serverResponse?.body;
-		if (!Array.isArray(body)) return [];
-		return body.map((r) => ({
-			requestId: r.bidId,
-			cpm: r.cpm,
-			width: r.w,
-			height: r.h,
-			ad: r.adm,
-			currency: r.cur || "USD",
-			ttl: r.ttl || 300,
-			netRevenue: true,
-			meta: { advertiserDomains: r.adomain || [] },
-		}));
-	},
+	interpretResponse(serverResponse, request) {
+		const bid = request.bidRequest;
+		const [w, h] = bid.mediaTypes?.banner?.sizes?.[0] ||
+			bid.sizes?.[0] || [300, 250];
+		const cpm = Number(serverResponse?.body?.cpm) || 0.6;
+		const adm =
+			serverResponse?.body?.adm ||
+			`
+      <div style="width:${w}px;height:${h}px;display:flex;align-items:center;justify-content:center;
+        background:linear-gradient(135deg,#4b2c5e,#7f5aa6);color:#fff;border-radius:14px;
+        font:600 14px/1.2 system-ui,Segoe UI,Inter,Roboto;">
+        Custom / Pokhvalenko ${w}×${h} • $${cpm.toFixed(2)} CPM
+        <a href="#" target="_blank" style="position:absolute;inset:0"></a>
+      </div>`;
 
-	getUserSyncs() {
-		return [];
+		return [
+			{
+				requestId: bid.bidId,
+				cpm,
+				width: w,
+				height: h,
+				ad: adm,
+				ttl: 300,
+				creativeId: `pokh_${Date.now()}`,
+				netRevenue: true,
+				currency: "USD",
+				meta: { advertiserDomains: ["demo-custom.local"] },
+			},
+		];
 	},
 };
 
-export default spec;
+export { pokhvalenkoBidAdapter };
+export default pokhvalenkoBidAdapter;
+if (typeof window !== "undefined")
+	window.pokhvalenkoAdapter = pokhvalenkoBidAdapter;

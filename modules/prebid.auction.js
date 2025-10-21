@@ -8,13 +8,15 @@ import {
 } from "virtual:ads-config";
 import { composeAdsCss } from "/modules/ads.styles.js";
 
-/* ───────────────────────────────── constants ───────────────────────────────── */
+/* ───────────────────────── config & constants ─────────────────────────── */
 
-const PREBID_SRC_LOCAL = "/prebid/prebid.js";
-const PREBID_SRC_CDN =
+const PORTFOLIO_MODE = true; // демо/навчальний режим
+const PREBID_SRC_PRIMARY =
 	"https://cdn.jsdelivr.net/npm/prebid.js@10.10.0/dist/prebid.js";
+const PREBID_SRC_FALLBACK = "/prebid/prebid.js";
+
 const GPT_SRC = "https://securepubads.g.doubleclick.net/tag/js/gpt.js";
-const USE_GAM = ENABLE_GAM && !!GAM_NETWORK_CALLS;
+const USE_GAM = !PORTFOLIO_MODE && ENABLE_GAM && !!GAM_NETWORK_CALLS;
 
 const TOP_SIZES = [
 	[970, 90],
@@ -27,8 +29,8 @@ const SIDE_SIZES = [
 	[300, 250],
 ];
 
-const BIDDER_TIMEOUT = 3000;
-const GPT_SAFE_FALLBACK_DELAY = BIDDER_TIMEOUT + 1200;
+const BIDDER_TIMEOUT = 1200;
+const GPT_SAFE_FALLBACK_DELAY = 300;
 
 const BIDMATIC_ALLOWED = [
 	[300, 250],
@@ -39,7 +41,11 @@ const BIDMATIC_ALLOWED = [
 	[970, 90],
 ];
 
-/* ──────────────────────────────── globals ──────────────────────────────── */
+// Імена локальних аліасів, щоб не торкатись зовнішніх доменів
+const BIDMATIC_ALIAS = "bidmatic_local";
+const POKH_ALIAS = "pokhvalenko_local";
+
+/* ─────────────────────────── globals & helpers ────────────────────────── */
 
 const w = window;
 w.__ads = w.__ads || {};
@@ -48,15 +54,13 @@ w.__ads.rendered = w.__ads.rendered || {};
 w.__ads.renderedByAdId = w.__ads.renderedByAdId || new Set();
 w.__ads.registeredBidders = w.__ads.registeredBidders || new Set();
 w.__ads.alias = w.__ads.alias || {};
-
-/* ───────────────────────────────── helpers ──────────────────────────────── */
+w.__ads.lastAuctionAt = w.__ads.lastAuctionAt || 0;
 
 const loadedScripts = new Set();
 function loadScript(src, id) {
 	return new Promise((resolve, reject) => {
 		if (id && document.getElementById(id)) return resolve();
 		if (loadedScripts.has(src)) return resolve();
-
 		const s = document.createElement("script");
 		if (id) s.id = id;
 		s.async = true;
@@ -71,8 +75,8 @@ function loadScript(src, id) {
 }
 
 const allowSize = (sizes) =>
-	sizes?.some?.(([w, h]) =>
-		BIDMATIC_ALLOWED.some(([aw, ah]) => aw === w && ah === h),
+	sizes?.some?.(([w0, h0]) =>
+		BIDMATIC_ALLOWED.some(([aw, ah]) => aw === w0 && ah === h0),
 	);
 
 function pickBestSize(containerW, sizes) {
@@ -116,15 +120,177 @@ function injectStylesOnce() {
 	document.head.appendChild(style);
 }
 
+/* ───────────────────── quiet demo CMP (TCF/USP/GPP robust stubs) ──────── */
+
+(function installDemoCMP() {
+	if (!PORTFOLIO_MODE) return;
+
+	const pickCb = (...args) => args.find((a) => typeof a === "function");
+
+	try {
+		// TCF v2
+		if (!w.__tcfapi) {
+			const tcData = {
+				gdprApplies: false,
+				tcfPolicyVersion: 2,
+				cmpId: 1,
+				cmpVersion: 1,
+				eventStatus: "tcloaded",
+				cmpStatus: "loaded",
+				tcString: "COxxxxOxxxxOAAAAAENAAAAAAA",
+			};
+			w.__tcfapi = (cmd, _ver, cb) => {
+				const callback = pickCb(cb);
+				if (typeof callback !== "function") return;
+				if (cmd === "addEventListener") {
+					try {
+						callback(tcData, true);
+					} catch {}
+					return 1;
+				}
+				if (cmd === "getTCData") {
+					try {
+						callback(tcData, true);
+					} catch {}
+					return;
+				}
+				if (cmd === "ping") {
+					try {
+						callback(
+							{
+								gdprApplies: false,
+								cmpLoaded: true,
+								cmpStatus: "loaded",
+								displayStatus: "hidden",
+							},
+							true,
+						);
+					} catch {}
+					return;
+				}
+				try {
+					callback(null, false);
+				} catch {}
+			};
+		}
+
+		// USP / USPrivacy
+		if (!w.__uspapi) {
+			w.__uspapi = (command, _version, callback) => {
+				if (typeof callback !== "function") return;
+				switch (command) {
+					case "registerDeletion":
+						try {
+							callback(true, true);
+						} catch {}
+						return;
+					case "getUSPData":
+					case "getUSPrivacyString":
+						try {
+							callback({ version: 1, uspString: "1---" }, true);
+						} catch {}
+						return;
+					case "ping":
+						try {
+							callback({ uspapiLoaded: true, version: 1 }, true);
+						} catch {}
+						return;
+					case "addEventListener":
+						try {
+							callback({ uspString: "1---" }, true);
+						} catch {}
+						return;
+					default:
+						try {
+							callback(null, false);
+						} catch {}
+				}
+			};
+		}
+
+		// GPP
+		if (typeof w.__gpp !== "function") {
+			w.__gpp = (command, a, b, c) => {
+				const cb = pickCb(a, b, c);
+				if (typeof cb !== "function") return;
+				if (command === "registerDeletion") {
+					try {
+						cb(true);
+					} catch {}
+					return;
+				}
+				if (command === "ping") {
+					try {
+						cb(
+							{
+								gppVersion: "1.1",
+								cmpStatus: "loaded",
+								signalStatus: "ready",
+								supportedAPIs: ["tcfeuv2", "usnat"],
+							},
+							true,
+						);
+					} catch {}
+					return;
+				}
+				if (command === "getGPPData") {
+					try {
+						cb({ gppString: "", applicableSections: [], sections: {} }, true);
+					} catch {}
+					return;
+				}
+				if (command === "addEventListener") {
+					try {
+						cb(
+							{
+								eventName: "listenerRegistered",
+								listenerId: Math.random().toString(36).slice(2),
+							},
+							true,
+						);
+					} catch {}
+					return;
+				}
+				if (command === "removeEventListener") {
+					try {
+						cb(true);
+					} catch {}
+					return;
+				}
+				try {
+					cb(undefined, false);
+				} catch {}
+			};
+		}
+	} catch {}
+})();
+
 /* ───────────────────── containers provided by React ───────────────────── */
 
 function ensureContainers() {
 	injectStylesOnce();
-	const topAdtelligent = document.getElementById("ad-top-adtelligent");
-	const leftAdtelligent = document.getElementById("ad-left-adtelligent");
-	const rightBidmatic = document.getElementById("ad-right-bidmatic");
-	const rightBeautiful = document.getElementById("ad-right-beautiful");
-	const mobileBidmatic = document.getElementById("ad-mobile-bidmatic");
+
+	const grab = (id) => {
+		const el = document.getElementById(id);
+		if (!el) return null;
+
+		el.classList?.add("ads-slot");
+		if (!el.style.position || el.style.position === "static") {
+			el.style.position = "relative";
+		}
+		el.style.overflow = "hidden";
+
+		if (el.childNodes?.length === 1 && el.textContent?.trim().length) {
+			el.innerHTML = "";
+		}
+		return el;
+	};
+
+	const topAdtelligent = grab("ad-top-adtelligent");
+	const leftAdtelligent = grab("ad-left-adtelligent");
+	const rightBidmatic = grab("ad-right-bidmatic");
+	const rightBeautiful = grab("ad-right-beautiful");
+	const mobileBidmatic = grab("ad-mobile-bidmatic");
 
 	if (ADS_DEBUG) {
 		console.log("[Prebid] containers", {
@@ -143,7 +309,6 @@ function ensureContainers() {
 		mobileBidmatic,
 	};
 }
-
 /* ───────────────────────────── house creatives ─────────────────────────── */
 
 function brandFor(unitId) {
@@ -152,7 +317,6 @@ function brandFor(unitId) {
 	if (unitId.includes("beautiful")) return "Custom";
 	return "Ad";
 }
-
 function houseSVG(brand, W, H) {
 	const big = W >= 728 ? 26 : 18;
 	const sub = 12;
@@ -172,7 +336,6 @@ function houseSVG(brand, W, H) {
     </g>
   </svg>`;
 }
-
 function renderHouse(unitId, size) {
 	const el = document.getElementById(unitId);
 	if (!el) return;
@@ -188,12 +351,14 @@ function renderHouse(unitId, size) {
 	img.height = H;
 	img.style.cssText = "display:block;width:100%;height:100%;border-radius:12px";
 	el.appendChild(img);
-	w.__ads.rendered[unitId] = true;
+	w.__ads.rendered[unitId] = false;
 }
-
 function ensurePlaceholder(id, text, size) {
 	const el = document.getElementById(id);
 	if (!el) return;
+	if (el.textContent?.trim().length && !el.querySelector(".ads-placeholder")) {
+		el.innerHTML = "";
+	}
 	let ph = el.querySelector(".ads-placeholder");
 	if (!ph) {
 		ph = document.createElement("div");
@@ -203,42 +368,31 @@ function ensurePlaceholder(id, text, size) {
 	ph.innerHTML = `<span>${text || "loading…"}</span>`;
 	setSlotSize(el, size);
 }
-function removePlaceholder(id) {
-	document.getElementById(id)?.querySelector(".ads-placeholder")?.remove();
-}
 
-/* ──────────────────────────────── Prebid ──────────────────────────────── */
+/* ─────────────────────────────── Prebid load ───────────────────────────── */
 
 let _prebidReady = false;
 let _prebidPromise = null;
 
-// вибираємо spec з будь-якого типу експорту
+function pbjsQueueFlush() {
+	w.pbjs = w.pbjs || { que: [] };
+	return new Promise((res) => w.pbjs.que.push(res));
+}
 function pickSpec(mod, names = []) {
 	if (!mod) return null;
 	const candidates = [
-		mod.spec,
-		mod.default,
-		mod.bidderSpec,
-		...names.map((n) => mod[n]),
+		mod?.spec,
+		mod?.default,
+		mod?.bidderSpec,
+		...names.map((n) => mod?.[n]),
 		...Object.values(mod || {}),
 	];
 	for (const v of candidates) {
-		if (
-			v &&
-			typeof v === "object" &&
-			typeof v.code === "string" &&
-			(typeof v.isBidRequestValid === "function" ||
-				typeof v.buildRequests === "function")
-		) {
+		if (v && typeof v === "object" && typeof v.code === "string") {
 			return v;
 		}
 	}
 	return null;
-}
-
-function pbjsQueueFlush() {
-	w.pbjs = w.pbjs || { que: [] };
-	return new Promise((res) => w.pbjs.que.push(res));
 }
 
 async function ensurePrebid() {
@@ -248,127 +402,121 @@ async function ensurePrebid() {
 	_prebidPromise = (async () => {
 		w.pbjs = w.pbjs || { que: [] };
 
-		// 1) підключаємо Prebid
 		try {
-			await loadScript(PREBID_SRC_LOCAL, "pbjs-lib");
+			await loadScript(PREBID_SRC_PRIMARY, "pbjs-lib");
 		} catch {
-			await loadScript(PREBID_SRC_CDN, "pbjs-lib");
+			await loadScript(PREBID_SRC_FALLBACK, "pbjs-lib");
 		}
 
-		// 2) імпортуємо адаптери
-		const promises = [];
-		if (ENABLE_BIDMATIC) {
-			promises.push(
-				import("/modules/bidmaticBidAdapter.js")
-					.then((m) => ({
-						name: "bidmatic",
-						spec: pickSpec(m, ["bidmaticBidAdapter"]),
-					}))
-					.catch((e) => ({ name: "bidmatic", error: e })),
+		let adtSpec = null;
+		try {
+			const m = await import("/modules/adtelligentBidAdapter.js").catch(
+				() => null,
 			);
-		}
-		promises.push(
-			import("/modules/adtelligentBidAdapter.js")
-				.then((m) => ({
-					name: "adtelligent",
-					spec: pickSpec(m, ["adtelligentBidAdapter"]),
-				}))
-				.catch((e) => ({ name: "adtelligent", error: e })),
-		);
-		promises.push(
-			import("/modules/pokhvalenkoBidAdapter.js")
-				.then((m) => ({
-					name: "pokhvalenko",
-					spec: pickSpec(m, ["pokhvalenkoBidAdapter"]),
-				}))
-				.catch((e) => ({ name: "pokhvalenko", error: e })),
-		);
+			adtSpec = pickSpec(m, ["adtelligentBidAdapter"]);
+		} catch {}
 
-		const loaded = await Promise.all(promises);
-
-		// 3) реєстрація / alias / конфіг
 		w.pbjs.que.push(() => {
+			const REGISTER_API = typeof w.pbjs.registerBidder === "function";
 			const mark = (code) => w.__ads.registeredBidders.add(code);
-			let adtelligentRegistered = false;
 
-			loaded.forEach(({ name, spec, error }) => {
-				if (error) console.warn(`[Prebid] ${name} adapter load failed:`, error);
-
-				try {
-					if (spec && typeof w.pbjs.registerBidder === "function") {
-						w.pbjs.registerBidder(spec);
-						mark(spec.code || name);
-						if (name === "adtelligent") adtelligentRegistered = true;
-						if (ADS_DEBUG) console.log(`[Prebid] ${name} registered`);
-					} else {
-						if (name === "adtelligent") {
-							adtelligentRegistered = true;
-							mark("adtelligent");
-							console.warn(
-								"[Prebid] adtelligent register skipped (no spec) — assuming bundled/self-registered",
-							);
-						} else {
-							console.warn(
-								`[Prebid] ${name} register skipped (no spec) — bidder won't be used`,
-							);
-						}
-					}
-				} catch (e) {
-					console.warn(`[Prebid] ${name} register error:`, e);
-				}
+			const makeDemoBidder = (code, cpmBase, label) => ({
+				code,
+				supportedMediaTypes: ["banner"],
+				isBidRequestValid: () => true,
+				buildRequests: (bids) =>
+					bids.map((bid) => ({
+						method: "GET",
+						url: "about:blank",
+						data: {},
+						bid,
+					})),
+				interpretResponse: (_resp, req) => {
+					const bid = req.bid;
+					const sizes = bid.mediaTypes?.banner?.sizes ||
+						bid.sizes || [[300, 250]];
+					const [w0, h0] = sizes[0];
+					const ad = `<div style="width:${w0}px;height:${h0}px;display:flex;align-items:center;justify-content:center;
+       border:2px dashed #9CA3AF;border-radius:12px;background:repeating-linear-gradient(-45deg,#F9FAFB 0 12px,#F3F4F6 12px 24px);
+       font:700 14px system-ui;color:#374151">${label} — demo (${w0}×${h0})</div>`;
+					return [
+						{
+							requestId: bid.bidId,
+							cpm: Number((cpmBase + Math.random() * 0.01).toFixed(2)),
+							currency: "USD",
+							width: w0,
+							height: h0,
+							ad,
+							creativeId: `${code}-${Math.random().toString(36).slice(2)}`,
+							netRevenue: true,
+							ttl: 60,
+						},
+					];
+				},
 			});
 
-			const isReg = (code) => w.__ads.registeredBidders.has(code);
-			const alias = (from, to) => {
-				if (
-					!isReg(from) &&
-					isReg(to) &&
-					typeof w.pbjs.aliasBidder === "function"
-				) {
-					try {
-						w.pbjs.aliasBidder(to, from);
-						w.__ads.alias[from] = to;
-						mark(from);
-						console.info(`[Prebid] alias '${from}' -> '${to}'`);
-					} catch (e) {
-						console.warn(`[Prebid] alias failed '${from}' -> '${to}'`, e);
-					}
+			if (PORTFOLIO_MODE && REGISTER_API) {
+				try {
+					w.pbjs.registerBidder(
+						makeDemoBidder("adtelligent", 2.2, "Adtelligent"),
+					);
+					mark("adtelligent");
+					w.pbjs.registerBidder(
+						makeDemoBidder(BIDMATIC_ALIAS, 2.5, "Bidmatic"),
+					);
+					mark(BIDMATIC_ALIAS);
+					w.pbjs.registerBidder(makeDemoBidder(POKH_ALIAS, 3.0, "Pokhvalenko"));
+					mark(POKH_ALIAS);
+				} catch (e) {
+					console.warn("[Prebid] demo bidders registration failed", e);
 				}
-			};
-			if (adtelligentRegistered) {
-				alias("bidmatic", "adtelligent");
-				alias("pokhvalenko", "adtelligent");
+			} else {
+				if (REGISTER_API && adtSpec) {
+					try {
+						w.pbjs.registerBidder(adtSpec);
+						mark(adtSpec.code || "adtelligent");
+					} catch (_e) {}
+				} else {
+					mark("adtelligent");
+				}
+				try {
+					w.pbjs.aliasBidder("adtelligent", BIDMATIC_ALIAS);
+					w.pbjs.aliasBidder("adtelligent", POKH_ALIAS);
+					mark(BIDMATIC_ALIAS);
+					mark(POKH_ALIAS);
+				} catch {}
 			}
 
-			// === CONSENT / CMP handling ===
-			const hasTCF = typeof w.__tcfapi === "function";
-			const hasUSP = typeof w.__uspapi === "function";
-			const hasGPP = typeof w.__gpp === "function";
-
-			const _consentConfig =
-				hasTCF || hasUSP || hasGPP
-					? {
-							...(hasTCF && {
-								gdpr: {
-									cmpApi: "iab",
-									timeout: 8000,
-								},
-							}),
-							...(hasUSP && { usp: { cmpApi: "iab", timeout: 1000 } }),
-							...(hasGPP && { gpp: { cmpApi: "iab", timeout: 1000 } }),
-						}
-					: undefined;
+			const consent = {
+				gdpr: { cmpApi: "iab", timeout: 100, allowAuctionWithoutConsent: true },
+				usp: { cmpApi: "iab", timeout: 50 },
+				gpp: { cmpApi: "iab", timeout: 150 },
+			};
 
 			w.pbjs.setConfig?.({
 				debug: !!ADS_DEBUG,
-				bidderTimeout: 3000,
+				bidderTimeout: BIDDER_TIMEOUT,
 				enableSendAllBids: true,
 				enableTIDs: true,
-
-				// ...(consentConfig ? { consentManagement: consentConfig } : {}),
-
-				coppa: !!w.__ads?.config?.coppa,
-
+				consentManagement: consent,
+				userSync: {
+					syncEnabled: false,
+					iframeEnabled: false,
+					pixelEnabled: false,
+					filterSettings: {
+						iframe: {
+							bidders: ["bidmatic_local", "pokhvalenko_local"],
+							filter: "include",
+						},
+					},
+				},
+				bidderSettings: PORTFOLIO_MODE
+					? {
+							adtelligent: { bidCpmAdjustment: (c) => c + 0.5 },
+							[BIDMATIC_ALIAS]: { bidCpmAdjustment: (c) => c + 0.6 },
+							[POKH_ALIAS]: { bidCpmAdjustment: (c) => c + 0.7 },
+						}
+					: undefined,
 				floors: w.__ads?.config?.floors ?? {
 					enforcement: { enforceFloors: true },
 					data: {
@@ -383,14 +531,6 @@ async function ensurePrebid() {
 						},
 					},
 				},
-
-				userSync: {
-					syncEnabled: false,
-					iframeEnabled: false,
-					pixelEnabled: false,
-					syncDelay: 0,
-				},
-
 				sizeConfig: [
 					{
 						label: "desktop",
@@ -422,7 +562,6 @@ async function ensurePrebid() {
 						],
 					},
 				],
-
 				schain: {
 					ver: "1.0",
 					complete: 1,
@@ -442,8 +581,6 @@ async function ensurePrebid() {
 					},
 				},
 			});
-
-			w.pbjs.setConfig?.({ adtelligent: { chunkSize: 1 } });
 		});
 
 		_prebidReady = true;
@@ -452,19 +589,17 @@ async function ensurePrebid() {
 	return _prebidPromise;
 }
 
-/* ─────────────────────────────────── GAM ─────────────────────────────────── */
+/* ─────────────────────────────────── GPT ───────────────────────────────── */
 
 let _gptPromise = null;
 async function ensureGpt() {
-	if (!ENABLE_GAM) return;
+	if (!USE_GAM) return;
 	if (w.googletag?.apiReady) return;
 	if (_gptPromise) return _gptPromise;
-
 	w.googletag = w.googletag || { cmd: [] };
 	_gptPromise = loadScript(GPT_SRC, "gpt-lib");
 	return _gptPromise;
 }
-
 function slotExists(id) {
 	try {
 		return (w.googletag?.pubads?.().getSlots?.() || []).some(
@@ -474,9 +609,8 @@ function slotExists(id) {
 		return false;
 	}
 }
-
 function applyNetworkTargeting() {
-	if (!ENABLE_GAM) return;
+	if (!USE_GAM) return;
 	w.googletag.cmd.push(() => {
 		const pubads = w.googletag.pubads();
 		pubads.setTargeting("site", location.hostname || "localhost");
@@ -486,9 +620,11 @@ function applyNetworkTargeting() {
 		);
 		pubads.setTargeting("env", import.meta.env.MODE || "dev");
 		pubads.setTargeting("prebid", "1");
+		try {
+			pubads.setRequestNonPersonalizedAds(1);
+		} catch {}
 	});
 }
-
 function defineGptSlots({ topAdtelligent, leftAdtelligent, rightBidmatic }) {
 	if (!USE_GAM) return;
 	w.googletag.cmd.push(() => {
@@ -529,8 +665,7 @@ function defineGptSlots({ topAdtelligent, leftAdtelligent, rightBidmatic }) {
 				const sizes = id.includes("top") ? TOP_SIZES : SIDE_SIZES;
 				const width = el?.getBoundingClientRect().width || sizes[0][0];
 				const best = pickBestSize(width, sizes);
-				renderHouse(id, best);
-				w.__ads.rendered[id] = false;
+				if (!w.__ads.rendered[id]) renderHouse(id, best);
 			} else {
 				removePlaceholder(id);
 				w.__ads.rendered[id] = true;
@@ -550,7 +685,7 @@ function defineGptSlots({ topAdtelligent, leftAdtelligent, rightBidmatic }) {
 	});
 }
 
-/* ───────────────────────────────── events ───────────────────────────────── */
+/* ───────────────────────────────── events ──────────────────────────────── */
 
 function hookPrebidEvents() {
 	if (w.__ads.eventsHooked) return;
@@ -577,7 +712,7 @@ function hookPrebidEvents() {
 	});
 }
 
-/* ───────────────────────────────── adUnits ──────────────────────────────── */
+/* ───────────────────────────────── adUnits ─────────────────────────────── */
 
 function makeAdUnits({
 	topAdtelligent,
@@ -612,103 +747,112 @@ function makeAdUnits({
 	return units;
 }
 
-function biddersForUnit(sizes, unitId) {
+function biddersForUnit(sizes, _unitId) {
 	const bidders = [];
 	const isRegistered = (code) => w.__ads.registeredBidders?.has(code);
-	const aliasedTo = (code) => w.__ads.alias?.[code];
 
-	let want;
-	if (unitId.includes("adtelligent")) want = ["adtelligent"];
-	else if (unitId.includes("bidmatic")) want = ["bidmatic"];
-	else if (unitId.includes("beautiful") || unitId.includes("pokh"))
-		want = ["pokhvalenko"];
-	else want = ["adtelligent", "bidmatic", "pokhvalenko"];
+	const want = PORTFOLIO_MODE
+		? ["adtelligent", BIDMATIC_ALIAS, POKH_ALIAS]
+		: ["adtelligent", BIDMATIC_ALIAS, POKH_ALIAS];
 
-	const ENABLE_ADTELLIGENT =
-		typeof w.__ads?.config?.ENABLE_ADTELLIGENT !== "undefined"
-			? !!w.__ads.config.ENABLE_ADTELLIGENT
-			: true;
-	const ADTELLIGENT_AID = w.__ads?.config?.ADTELLIGENT_AID ?? 350975;
-	const _POKHVALENKO_AID = w.__ads?.config?.POKHVALENKO_AID ?? 350975;
-
-	const paramsFor = (code) => {
-		const aliasTarget = aliasedTo(code);
-		if (aliasTarget === "adtelligent") {
-			return { bidder: code, params: { aid: Number(ADTELLIGENT_AID) } };
-		}
-		if (code === "adtelligent") {
-			return {
-				bidder: "adtelligent",
-				params: { aid: Number(ADTELLIGENT_AID) },
-			};
-		}
-		if (code === "bidmatic") {
-			const p = { source: Number(BIDMATIC_SOURCE) };
-			if (BIDMATIC_SPN) p.spn = BIDMATIC_SPN;
-			return { bidder: "bidmatic", params: p };
-		}
-		if (code === "pokhvalenko") {
-			return {
-				bidder: "pokhvalenko",
-				params: { aid: Number(POKHVALЕНКО_AID) },
-			};
+	function paramsFor(code) {
+		const ADTELLIGENT_AID = w.__ads?.config?.ADTELLIGENT_AID ?? 350975;
+		if (
+			code === "adtelligent" ||
+			code === BIDMATIC_ALIAS ||
+			code === POKH_ALIAS
+		) {
+			const p = { aid: Number(ADTELLIGENT_AID) };
+			if (code === BIDMATIC_ALIAS) {
+				if (Number(BIDMATIC_SOURCE)) p.source = Number(BIDMATIC_SOURCE);
+				if (BIDMATIC_SPN) p.spn = BIDMATIC_SPN;
+			}
+			return { bidder: code, params: p };
 		}
 		return null;
-	};
-
-	// adtelligent
-	if (
-		want.includes("adtelligent") &&
-		ENABLE_ADTELLIGENT &&
-		isRegistered("adtelligent") &&
-		Number(ADTELLIGENT_AID) &&
-		allowSize(sizes)
-	) {
-		bidders.push(paramsFor("adtelligent"));
 	}
 
-	// bidmatic
-	if (
-		want.includes("bidmatic") &&
-		isRegistered("bidmatic") &&
-		allowSize(sizes) &&
-		(aliasedTo("bidmatic") === "adtelligent"
-			? Number(ADTELLIGENT_AID)
-			: ENABLE_BIDMATIC && Number(BIDMATIC_SOURCE))
-	) {
-		bidders.push(paramsFor("bidmatic"));
-	}
+	want.forEach((code) => {
+		const enabled = code === BIDMATIC_ALIAS ? ENABLE_BIDMATIC !== false : true;
+		if (enabled && isRegistered(code) && allowSize(sizes)) {
+			const p = paramsFor(code);
+			if (p) bidders.push(p);
+		}
+	});
 
-	// pokhvalenko (custom)
-	if (
-		want.includes("pokhvalenko") &&
-		isRegistered("pokhvalenko") &&
-		allowSize(sizes) &&
-		(aliasedTo("pokhvalenko") === "adtelligent"
-			? Number(ADTELLIGENT_AID)
-			: Number(POKHVALENКО_AID))
-	) {
-		bidders.push(paramsFor("pokhvalenko"));
-	}
-
-	if (ADS_DEBUG) console.log("[Prebid] bidders for", unitId, bidders);
+	if (ADS_DEBUG) console.log("[Prebid] bidders for unit:", _unitId, bidders);
 	return bidders;
+}
+
+/* ─────────────────────────────── selection ─────────────────────────────── */
+
+function preferredBidderFor(code) {
+	if (code.includes("top-adtelligent")) return "adtelligent";
+	if (code.includes("right-bidmatic")) return BIDMATIC_ALIAS;
+	if (code.includes("right-beautiful")) return POKH_ALIAS;
+	if (code.includes("mobile-bidmatic")) return POKH_ALIAS;
+	return null;
+}
+
+function getBidsForCode(code) {
+	try {
+		const resp = w.pbjs.getBidResponsesForAdUnitCode?.(code) || {};
+		return Array.isArray(resp.bids) ? resp.bids : [];
+	} catch {
+		return [];
+	}
+}
+
+function chooseWinners(adUnitCodes) {
+	const winners = [];
+	for (const code of adUnitCodes) {
+		const bids = getBidsForCode(code);
+		if (!bids.length) continue;
+
+		const prefer = preferredBidderFor(code);
+		const byBidder = (name) =>
+			bids.find((b) => String(b.bidderCode || b.bidder) === String(name));
+
+		let pick = prefer ? byBidder(prefer) : null;
+		if (!pick) pick = byBidder("adtelligent");
+		if (!pick)
+			pick = bids.reduce((acc, b) => (!acc || b.cpm > acc.cpm ? b : acc), null);
+
+		if (pick) winners.push(pick);
+	}
+	return winners;
+}
+
+function removePlaceholder(id) {
+	const el = document.getElementById(id);
+	el?.querySelector(".ads-placeholder")?.remove();
 }
 
 /* ─────────────────────────────── rendering ─────────────────────────────── */
 
 function renderDirect(winner) {
-	const el = document.getElementById(winner.adUnitCode);
-	if (!el) return;
+	const id = String(winner.adUnitCode || "");
+	const el = document.getElementById(id);
+	if (!el) {
+		console.warn("[Prebid] renderDirect: container not found:", id);
+		return;
+	}
 
-	const adId = String(winner.adId || "");
-	if (adId && w.__ads.renderedByAdId.has(adId)) return;
+	w.__ads.rendered[id] = false;
 
-	const W = Number(winner.width || 0),
-		H = Number(winner.height || 0);
+	const W = Number(winner.width || winner.size?.[0] || 300);
+	const H = Number(winner.height || winner.size?.[1] || 250);
+
+	if (!el.style.position || el.style.position === "static")
+		el.style.position = "relative";
+	el.style.overflow = "hidden";
 	setSlotSize(el, [W, H]);
-	removePlaceholder(winner.adUnitCode);
-	el.innerHTML = "";
+	removePlaceholder(id);
+
+	try {
+		el.innerHTML = "";
+	} catch {}
+
 	const ifr = document.createElement("iframe");
 	ifr.setAttribute("scrolling", "no");
 	ifr.setAttribute("frameborder", "0");
@@ -716,20 +860,61 @@ function renderDirect(winner) {
 		"display:block;border:0;width:100%;height:100%;overflow:hidden;border-radius:12px";
 	el.appendChild(ifr);
 
+	const writeRaw = () => {
+		try {
+			const doc = ifr.contentDocument || ifr.contentWindow?.document;
+			if (!doc) return;
+			doc.open();
+			doc.write(String(winner.ad || ""));
+			doc.close();
+		} catch (e) {
+			console.warn("[Prebid] writeRaw error:", e);
+		}
+	};
+
 	try {
-		w.pbjs.renderAd?.(ifr.contentWindow.document, winner.adId);
-		if (adId) w.__ads.renderedByAdId.add(adId);
-		w.__ads.rendered[winner.adUnitCode] = true;
+		const doc = ifr.contentWindow?.document || null;
+		if (w.pbjs?.renderAd && winner.adId && doc) {
+			try {
+				w.pbjs.renderAd(doc, winner.adId);
+			} catch (_e) {
+				if (winner.ad) writeRaw();
+			}
+		} else if (winner.ad) {
+			writeRaw();
+		}
 	} catch (e) {
-		console.warn("[Prebid] renderAd error", e);
+		console.warn("[Prebid] renderAd error, fallback to raw HTML:", e);
+		if (winner.ad) writeRaw();
 	}
+
+	setTimeout(() => {
+		try {
+			const body = ifr.contentDocument?.body;
+			const empty =
+				!body ||
+				body.childNodes.length === 0 ||
+				body.innerHTML.trim().length === 0;
+			if (empty && winner.ad) writeRaw();
+			w.__ads.rendered[id] = true;
+			if (winner.adId) w.__ads.renderedByAdId.add(winner.adId);
+		} catch {
+			renderHouse(id, [W, H]);
+		}
+	}, 60);
 }
 
 /* ───────────────────────────── public API ──────────────────────────────── */
 
 let _initOnce = false;
+
 export async function initAds() {
-	if (_initOnce) return;
+	if (_initOnce) {
+		const slots = ensureContainers();
+		if (!hasAny(slots)) return;
+		return requestAndDisplay();
+	}
+
 	_initOnce = true;
 
 	let slots = ensureContainers();
@@ -778,8 +963,6 @@ function initAnalytics() {
 	if (ADS_DEBUG) console.log("[analytics] init", { uid: w.__ads.uid });
 }
 
-let _auctionInFlight = false;
-
 async function waitBiddersReady() {
 	await new Promise((r) => {
 		window.pbjs = window.pbjs || { que: [] };
@@ -787,18 +970,29 @@ async function waitBiddersReady() {
 	});
 	const t0 = performance.now();
 	while (
-		(window.__ads?.registeredBidders?.size || 0) === 0 &&
-		performance.now() - t0 < 800
+		(window.__ads?.registeredBidders?.size || 0) < 1 &&
+		performance.now() - t0 < 1500
 	) {
 		await new Promise((r) => window.pbjs.que.push(r));
 	}
 }
 
+let _auctionInFlight = false;
+
+function resetRenderFlags(codes) {
+	if (!codes) return;
+	codes.forEach((c) => {
+		w.__ads.rendered[c] = false;
+	});
+}
+
 export async function requestAndDisplay(adUnits) {
+	await ensurePrebid();
+	await waitBiddersReady();
+	await pbjsQueueFlush();
+
 	if (_auctionInFlight) return;
 	_auctionInFlight = true;
-
-	await pbjsQueueFlush();
 
 	const slots = ensureContainers();
 	const units = adUnits || makeAdUnits(slots);
@@ -807,12 +1001,16 @@ export async function requestAndDisplay(adUnits) {
 		return;
 	}
 
+	const codes = units.map((u) => u.code);
+	resetRenderFlags(codes);
+
 	for (const u of units) {
 		const first = (u.mediaTypes?.banner?.sizes || [[300, 250]])[0];
 		ensurePlaceholder(u.code, "auction…", first);
 	}
 
-	const codes = units.map((u) => u.code);
+	w.__lastCodes = codes.slice();
+
 	const unitSizesByCode = Object.fromEntries(
 		units.map((u) => [u.code, u.mediaTypes?.banner?.sizes || [[300, 250]]]),
 	);
@@ -828,68 +1026,78 @@ export async function requestAndDisplay(adUnits) {
 			adUnitCodes: codes,
 			timeout: BIDDER_TIMEOUT,
 			bidsBackHandler: () => {
-				const renderWinners = (winners) => {
+				const winners = chooseWinners(codes);
+
+				if (winners.length) {
+					logEvent("hb:bidsBackHandler", { codes, winners });
 					if (USE_GAM && w.googletag?.apiReady) {
-						w.pbjs.setTargetingForGPTAsync?.();
+						w.pbjs.setTargetingForGPTAsync?.(codes);
 						w.googletag.cmd.push(() => w.googletag.pubads().refresh());
 						setTimeout(() => {
-							winners.forEach((wb) => {
-								if (!w.__ads.rendered[wb.adUnitCode]) renderDirect(wb);
-							});
+							for (const wb of winners) {
+								renderDirect(wb);
+							}
 							_auctionInFlight = false;
+							w.__ads.lastAuctionAt = Date.now();
 						}, GPT_SAFE_FALLBACK_DELAY);
 					} else {
-						winners.forEach(renderDirect);
+						for (const wb of winners) {
+							renderDirect(wb);
+						}
 						_auctionInFlight = false;
+						w.__ads.lastAuctionAt = Date.now();
 					}
-				};
-
-				const direct = w.pbjs.getHighestCpmBids?.(codes) || [];
-				if (direct.length) {
-					logEvent("hb:bidsBackHandler", { codes, winners: direct });
-					renderWinners(direct);
 					return;
 				}
 
 				setTimeout(() => {
-					const late = (w.pbjs.getAllWinningBids?.() || []).filter((b) =>
-						codes.includes(b.adUnitCode),
-					);
+					const late = chooseWinners(codes);
 					if (late.length) {
 						logEvent("hb:bidsBackHandler:late", { codes, winners: late });
-						renderWinners(late);
+						for (const wb of late) {
+							renderDirect(wb);
+						}
+						_auctionInFlight = false;
+						w.__ads.lastAuctionAt = Date.now();
 						return;
 					}
 
 					codes.forEach((code) => {
+						const adtBids = getBidsForCode(code).filter(
+							(b) => String(b.bidderCode) === "adtelligent",
+						);
+						if (adtBids.length) {
+							renderDirect(adtBids[0]);
+							return;
+						}
 						const el = document.getElementById(code);
 						const unitSizes = unitSizesByCode[code] || [[300, 250]];
 						const width = el?.getBoundingClientRect().width || unitSizes[0][0];
 						const best = pickBestSize(width, unitSizes);
 						renderHouse(code, best);
 					});
-					logEvent("hb:bidsBackHandler:none", { codes });
+					logEvent("hb:bidsBackHandler:none", { adUnitCodes: codes });
 					_auctionInFlight = false;
-				}, 300);
+					w.__ads.lastAuctionAt = Date.now();
+				}, 250);
 			},
 		});
 	});
 }
 
 export async function refreshAds(codes) {
+	await ensurePrebid();
+	await waitBiddersReady();
 	await pbjsQueueFlush();
+
+	if (Date.now() - (w.__ads.lastAuctionAt || 0) < 1200) return;
 
 	const slots = ensureContainers();
 	const units = makeAdUnits(slots);
 	const adUnitCodes = codes || units.map((u) => u.code);
 	if (!adUnitCodes.length) return;
 
-	for (const u of units) {
-		if (adUnitCodes.includes(u.code)) {
-			const first = (u.mediaTypes?.banner?.sizes || [[300, 250]])[0];
-			ensurePlaceholder(u.code, "refresh…", first);
-		}
-	}
+	resetRenderFlags(adUnitCodes);
 
 	const unitSizesByCode = Object.fromEntries(
 		units.map((u) => [u.code, u.mediaTypes?.banner?.sizes || [[300, 250]]]),
@@ -900,38 +1108,55 @@ export async function refreshAds(codes) {
 			adUnitCodes,
 			timeout: BIDDER_TIMEOUT,
 			bidsBackHandler: () => {
-				const renderWinners = (winners) => {
+				const winners = chooseWinners(adUnitCodes);
+
+				if (winners.length) {
+					logEvent("hb:bidsBackHandler", { adUnitCodes, winners });
 					if (USE_GAM && w.googletag?.apiReady) {
-						w.pbjs.setTargetingForGPTAsync?.();
+						w.pbjs.setTargetingForGPTAsync?.(adUnitCodes);
 						w.googletag.cmd.push(() => w.googletag.pubads().refresh());
 						setTimeout(() => {
-							winners.forEach((wb) => {
-								if (!w.__ads.rendered[wb.adUnitCode]) renderDirect(wb);
-							});
+							for (const wb of winners) {
+								renderDirect(wb);
+							}
+							w.__ads.lastAuctionAt = Date.now();
 						}, GPT_SAFE_FALLBACK_DELAY);
 					} else {
-						winners.forEach(renderDirect);
+						for (const wb of winners) {
+							renderDirect(wb);
+						}
+						w.__ads.lastAuctionAt = Date.now();
 					}
-				};
-
-				const direct = w.pbjs.getHighestCpmBids?.(adUnitCodes) || [];
-				if (direct.length) {
-					logEvent("hb:bidsBackHandler", { adUnitCodes, winners: direct });
-					renderWinners(direct);
 					return;
 				}
 
 				setTimeout(() => {
-					const late = (w.pbjs.getAllWinningBids?.() || []).filter((b) =>
-						adUnitCodes.includes(b.adUnitCode),
-					);
+					const late = chooseWinners(adUnitCodes);
 					if (late.length) {
-						logEvent("hb:bidsBackHandler:late", { adUnitCodes, winners: late });
-						renderWinners(late);
+						const seen2 = new Set();
+						const uniq = late.filter((wb) => {
+							const id = wb.adId;
+							if (!id) return true;
+							if (seen2.has(id)) return false;
+							seen2.add(id);
+							return true;
+						});
+						logEvent("hb:bidsBackHandler:late", { adUnitCodes, winners: uniq });
+						for (const wb of uniq) {
+							renderDirect(wb);
+						}
+						w.__ads.lastAuctionAt = Date.now();
 						return;
 					}
 
 					adUnitCodes.forEach((code) => {
+						const adtBids = getBidsForCode(code).filter(
+							(b) => String(b.bidderCode) === "adtelligent",
+						);
+						if (adtBids.length) {
+							renderDirect(adtBids[0]);
+							return;
+						}
 						const el = document.getElementById(code);
 						const unitSizes = unitSizesByCode[code] || [[300, 250]];
 						const width = el?.getBoundingClientRect().width || unitSizes[0][0];
@@ -939,7 +1164,8 @@ export async function refreshAds(codes) {
 						renderHouse(code, best);
 					});
 					logEvent("hb:bidsBackHandler:none", { adUnitCodes });
-				}, 300);
+					w.__ads.lastAuctionAt = Date.now();
+				}, 250);
 			},
 		});
 	});

@@ -2,30 +2,30 @@
   window.pbjs = window.pbjs || { que: [] };
   window.googletag = window.googletag || { cmd: [] };
 
-  const ADTELLIGENT_AID = 350975;
-  const BIDMATIC_SOURCE = 886409;
-  const POK_AID = 350975; 
-
-  const FORCE_POK =
-    new URL(location.href).searchParams.get("forcePok") === "1";
+  // === DEMO params ===
+  const ADTELLIGENT_AID = 350975; 
+  const GPT_PATH = "/1234567/ad-300x250"; 
 
   // ---- GPT ----
   googletag.cmd.push(function () {
     const pubads = googletag.pubads();
+
+    pubads.setRequestNonPersonalizedAds(1);
+
     pubads.disableInitialLoad();
     pubads.enableSingleRequest();
     pubads.setCentering(true);
 
     googletag
-      .defineSlot("/1234567/ad-300x250", [[300, 250]], "ad-adtelligent")
+      .defineSlot(GPT_PATH, [[300, 250]], "ad-adtelligent")
       .addService(pubads).setTargeting("pos", "adtelligent");
 
     googletag
-      .defineSlot("/1234567/ad-300x250", [[300, 250]], "ad-bidmatic")
+      .defineSlot(GPT_PATH, [[300, 250]], "ad-bidmatic")
       .addService(pubads).setTargeting("pos", "bidmatic");
 
     googletag
-      .defineSlot("/1234567/ad-300x250", [[300, 250]], "ad-pokhvalenko")
+      .defineSlot(GPT_PATH, [[300, 250]], "ad-pokhvalenko")
       .addService(pubads).setTargeting("pos", "pokhvalenko");
 
     googletag.enableServices();
@@ -37,48 +37,56 @@
 
   // ---- Prebid ----
   pbjs.que.push(function () {
+    ["bidmatic", "pokhvalenko"].forEach(alias => {
+      try { pbjs.aliasBidder("adtelligent", alias); } catch (e) {}
+    });
+
     pbjs.setConfig({
+      debug: true,
       bidderTimeout: 1200,
       enableSendAllBids: true,
 
-      consentManagement: {
-        gdpr: { cmpApi: "tcfv2", timeout: 8000, allowAuctionWithoutConsent: false },
-        usp:  { cmpApi: "usp",   timeout: 8000 },
-      },
-      bidderSettings: FORCE_POK
-        ? { pokhvalenko: { bidCpmAdjustment: (cpm) => cpm + 100 } }
-        : undefined,
+      userSync: { syncEnabled: false },
+
+      bidderSettings: {
+      
+        adtelligent:  { bidCpmAdjustment: c => c + 1.00 },
+        
+        bidmatic:     { bidCpmAdjustment: c => c + 2.00 },
+      
+        pokhvalenko:  { bidCpmAdjustment: c => c + 3.00 }
+      }
     });
 
     const adUnits = [
       {
         code: "ad-adtelligent",
         mediaTypes: { banner: { sizes: [[300, 250]] } },
-        bids: [{ bidder: "adtelligent", params: { aid: ADTELLIGENT_AID } }],
+        bids: [{ bidder: "adtelligent", params: { aid: ADTELLIGENT_AID } }]
       },
       {
         code: "ad-bidmatic",
         mediaTypes: { banner: { sizes: [[300, 250]] } },
-        bids: [{ bidder: "bidmatic", params: { source: BIDMATIC_SOURCE } }],
+        bids: [{ bidder: "bidmatic", params: { aid: ADTELLIGENT_AID } }]
       },
       {
         code: "ad-pokhvalenko",
         mediaTypes: { banner: { sizes: [[300, 250]] } },
-        bids: [{ bidder: "pokhvalenko", params: { aid: POK_AID } }],
-      },
+        bids: [{ bidder: "pokhvalenko", params: { aid: ADTELLIGENT_AID } }]
+      }
     ];
 
     pbjs.addAdUnits(adUnits);
 
     pbjs.requestBids({
-      adUnitCodes: adUnits.map((u) => u.code),
+      adUnitCodes: adUnits.map(u => u.code),
       timeout: 1100,
       bidsBackHandler: function () {
         pbjs.setTargetingForGPTAsync();
         googletag.cmd.push(function () {
-          googletag.pubads().refresh();
+          googletag.pubads().refresh(); 
         });
-      },
+      }
     });
   });
 })();

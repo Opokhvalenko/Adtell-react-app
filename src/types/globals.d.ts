@@ -41,6 +41,7 @@ declare global {
 	interface Window {
 		__ads?: AdsModule;
 		__adslog?: AdsEvt[];
+		__THEME_BOOT__?: { saved: Theme; wantDark: boolean };
 
 		pbjs?: unknown;
 		googletag?: unknown;
@@ -52,6 +53,5 @@ declare global {
 		cancelIdleCallback?(id: number): void;
 	}
 
-	/** build-часова константа (vite define) */
 	const __BUILD_TIME__: string;
 }

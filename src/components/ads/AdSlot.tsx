@@ -3,7 +3,16 @@ import { type HTMLAttributes, useEffect, useId, useMemo, useRef } from "react";
 import { ensureAdsModule, getAdsModule } from "@/lib/ads/window";
 import { resolveAdserverEndpoint } from "@/lib/adserver";
 import { cn } from "@/lib/cn";
-import type { AdClient } from "@/types/adserver-client";
+import type { AdClient } from "@/types/a-client";
+
+type Runtime = {
+	uid?: string;
+	endpoint?: string;
+	registry?: Record<string, { sizes: SizeTuple[]; type: AdSlotType }>;
+	requestAndDisplay?: (opts: RequestOpts) => Promise<void>;
+	refreshAds?: (ids?: string[]) => Promise<void> | void;
+	unmount?: (id: string) => void;
+};
 
 export type AdSlotProps = HTMLAttributes<HTMLDivElement> & {
 	sizes?: SizeStr[];
@@ -80,7 +89,8 @@ function renderFallbackAd(element: HTMLElement, id: string) {
 
 function safeUnmount(domId: string) {
 	try {
-		getAdsModule()?.unmount?.(domId);
+		const m = getAdsModule() as unknown as Runtime | undefined;
+		m?.unmount?.(domId);
 	} catch {
 		/* ignore */
 	}
@@ -140,16 +150,13 @@ export default function AdSlot({
 				const maybe = ensureAdsModule();
 				if (maybe instanceof Promise) await maybe;
 
-				const adsModule = getAdsModule();
+				const adsModule = getAdsModule() as unknown as Runtime | undefined;
 				if (!adsModule) {
 					renderFallbackAd(el, domId);
 					return;
 				}
 
-				// ⬇️ без присвоєння в виразі
-				if (!adsModule.registry) {
-					adsModule.registry = {};
-				}
+				adsModule.registry ??= {};
 				const reg = adsModule.registry;
 				reg[domId] = {
 					sizes: sizes.map(toTuple),
@@ -184,7 +191,6 @@ export default function AdSlot({
 				renderFallbackAd(el, domId);
 			}
 
-			// резервний рендер
 			fallbackTimer = window.setTimeout(async () => {
 				const hasIframe = !!el.querySelector("iframe");
 				const hasHtml = !!el.innerHTML && el.innerHTML.trim().length > 0;
@@ -192,7 +198,7 @@ export default function AdSlot({
 					renderFallbackAd(el, domId);
 					try {
 						const runtimePath = new URL(
-							"/modules/adserver.client.js",
+							"/modules/a.client.js",
 							window.location.origin,
 						).href;
 						const mod = (await import(
@@ -204,7 +210,8 @@ export default function AdSlot({
 							size: best,
 							type,
 							geo,
-							uid: getAdsModule()?.uid ?? "",
+							uid:
+								(getAdsModule() as unknown as Runtime | undefined)?.uid ?? "",
 							floor: floorCpm,
 							endpoint: ep,
 						});

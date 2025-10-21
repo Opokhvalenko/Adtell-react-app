@@ -1,6 +1,8 @@
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+
 export type ControlsProps = {
-	from: string;
-	to: string;
+	from: string; // YYYY-MM-DD
+	to: string; // YYYY-MM-DD
 	groupBy: string;
 	setFrom: (v: string) => void;
 	setTo: (v: string) => void;
@@ -13,94 +15,423 @@ export type ControlsProps = {
 	onLoadView: (name: string) => void;
 
 	onOpenChart: () => void;
+
+	onExportCSV: () => void;
+	onCopyCSV: () => void;
 };
 
-export function Controls(props: ControlsProps) {
-	const {
-		from,
-		to,
-		groupBy,
-		setFrom,
-		setTo,
-		setGroupBy,
-		viewName,
-		setViewName,
-		names,
-		onSaveView,
-		onLoadView,
-		onOpenChart,
-	} = props;
+/* ───────────── helpers ───────────── */
+function fmtDisplay(d: Date) {
+	const mm = `${d.getMonth() + 1}`.padStart(2, "0");
+	const dd = `${d.getDate()}`.padStart(2, "0");
+	const yyyy = d.getFullYear();
+	return `${mm}/${dd}/${yyyy}`;
+}
+function parseYMD(s: string) {
+	const [y, m, d] = s.split("-").map(Number);
+	return new Date(y, (m || 1) - 1, d || 1);
+}
+function toYMD(d: Date) {
+	const yyyy = d.getFullYear();
+	const mm = `${d.getMonth() + 1}`.padStart(2, "0");
+	const dd = `${d.getDate()}`.padStart(2, "0");
+	return `${yyyy}-${mm}-${dd}`;
+}
+
+/* ───────────── DateRangePickerLite ───────────── */
+function DateRangePickerLite({
+	from,
+	to,
+	onChange,
+}: {
+	from: string;
+	to: string;
+	onChange: (f: string, t: string) => void;
+}) {
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [open, setOpen] = useState(false);
+	const labelId = useId();
+
+	const [cursor, setCursor] = useState<Date>(() => parseYMD(from));
+	const [start, setStart] = useState<Date>(() => parseYMD(from));
+	const [end, setEnd] = useState<Date>(() => parseYMD(to));
+
+	useEffect(() => {
+		const s = parseYMD(from);
+		const e = parseYMD(to);
+		setStart(s);
+		setEnd(e);
+		setCursor(s);
+	}, [from, to]);
+
+	useEffect(() => {
+		function onDoc(e: MouseEvent) {
+			if (!open) return;
+			const el = rootRef.current;
+			if (el && !el.contains(e.target as Node)) {
+				setStart(parseYMD(from));
+				setEnd(parseYMD(to));
+				setCursor(parseYMD(from));
+				setOpen(false);
+			}
+		}
+		document.addEventListener("mousedown", onDoc);
+		return () => document.removeEventListener("mousedown", onDoc);
+	}, [open, from, to]);
+
+	type Cell = { date: Date | null; key: string };
+
+	const grid: Cell[] = useMemo(() => {
+		const y = cursor.getFullYear();
+		const m = cursor.getMonth();
+		const first = new Date(y, m, 1);
+		const startIdx = (first.getDay() + 6) % 7;
+		const daysInMonth = new Date(y, m + 1, 0).getDate();
+		const cells: Cell[] = [];
+
+		for (let i = 0; i < startIdx; i++) {
+			const dt = new Date(y, m, 1 - (startIdx - i));
+			cells.push({ date: null, key: `lead-${dt.toDateString()}` });
+		}
+
+		for (let d = 1; d <= daysInMonth; d++) {
+			const dt = new Date(y, m, d);
+			cells.push({ date: dt, key: `day-${toYMD(dt)}` });
+		}
+
+		const tail = (7 - (cells.length % 7)) % 7;
+		for (let i = 0; i < tail; i++) {
+			const dt = new Date(y, m + 1, i + 1);
+			cells.push({ date: null, key: `tail-${dt.toDateString()}` });
+		}
+		return cells;
+	}, [cursor]);
+
+	const label = `${fmtDisplay(parseYMD(from))} - ${fmtDisplay(parseYMD(to))}`;
+
+	const presets: Array<{ label: string; calc: () => [Date, Date] }> = [
+		{
+			label: "Today",
+			calc: () => {
+				const d = new Date();
+				return [d, d];
+			},
+		},
+		{
+			label: "Yesterday",
+			calc: () => {
+				const d = new Date();
+				d.setDate(d.getDate() - 1);
+				return [d, d];
+			},
+		},
+		{
+			label: "Last 7 days",
+			calc: () => {
+				const e = new Date();
+				const s = new Date();
+				s.setDate(s.getDate() - 6);
+				return [s, e];
+			},
+		},
+		{
+			label: "Last 14 days",
+			calc: () => {
+				const e = new Date();
+				const s = new Date();
+				s.setDate(s.getDate() - 13);
+				return [s, e];
+			},
+		},
+		{
+			label: "Last 30 days",
+			calc: () => {
+				const e = new Date();
+				const s = new Date();
+				s.setDate(s.getDate() - 29);
+				return [s, e];
+			},
+		},
+		{
+			label: "This Month",
+			calc: () => {
+				const n = new Date();
+				const s = new Date(n.getFullYear(), n.getMonth(), 1);
+				const e = new Date(n.getFullYear(), n.getMonth() + 1, 0);
+				return [s, e];
+			},
+		},
+		{
+			label: "Last Month",
+			calc: () => {
+				const n = new Date();
+				const s = new Date(n.getFullYear(), n.getMonth() - 1, 1);
+				const e = new Date(n.getFullYear(), n.getMonth(), 0);
+				return [s, e];
+			},
+		},
+	];
+
+	function pickDay(d: Date) {
+		if (!start || (start && end)) {
+			setStart(d);
+			setEnd(d);
+			return;
+		}
+		if (d < start) {
+			setEnd(start);
+			setStart(d);
+		} else {
+			setEnd(d);
+		}
+	}
+
+	function applyRange(s: Date, e: Date) {
+		onChange(toYMD(s), toYMD(e));
+		setOpen(false);
+	}
+
+	const isInRange = (d: Date) => d >= start && d <= end;
 
 	return (
-		<div className="flex flex-wrap items-end gap-3 p-3 rounded-xl border bg-white/60 dark:bg-white/5 shadow-sm backdrop-blur-sm">
-			<label className="flex flex-col">
-				<span className="text-xs text-gray-400">From</span>
-				<input
-					type="date"
-					value={from}
-					onChange={(e) => setFrom(e.target.value)}
-					className="border rounded p-2"
-				/>
-			</label>
+		<div ref={rootRef} className="relative">
+			<span
+				id={labelId}
+				className="text-sm font-semibold text-gray-700 dark:text-gray-200 block mb-1"
+			>
+				Metrics
+			</span>
 
-			<label className="flex flex-col">
-				<span className="text-xs text-gray-400">To</span>
-				<input
-					type="date"
-					value={to}
-					onChange={(e) => setTo(e.target.value)}
-					className="border rounded p-2"
-				/>
-			</label>
+			<button
+				type="button"
+				aria-haspopup="dialog"
+				aria-expanded={open}
+				aria-labelledby={labelId}
+				onClick={() => setOpen((v) => !v)}
+				className="w-[320px] h-11 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 text-left font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+			>
+				{label}
+			</button>
 
-			<label className="flex flex-col w-[320px]">
-				<span className="text-xs text-gray-400">Group by</span>
-				<input
-					value={groupBy}
-					onChange={(e) => setGroupBy(e.target.value)}
-					className="border rounded p-2"
-					placeholder="day,event,adapter"
-				/>
-			</label>
-
-			<div className="flex items-center gap-2 ml-auto">
-				<input
-					placeholder="view name"
-					className="border rounded p-2 w-40"
-					value={viewName}
-					onChange={(e) => setViewName(e.target.value)}
-				/>
-				<button
-					type="button"
-					onClick={onSaveView}
-					className="px-6 py-3 rounded-xl text-base font-semibold border shadow-lg transition-all duration-300 ease-in-out bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 hover:from-blue-500 hover:to-indigo-500 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5 active:scale-95 cursor-pointer select-none backdrop-blur-sm"
+			{open && (
+				<div
+					role="dialog"
+					aria-label="Choose date range"
+					tabIndex={-1}
+					className="absolute z-20 mt-2 w-[370px] rounded-2xl border bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl p-4"
 				>
-					Save View
-				</button>
+					{/* header */}
+					<div className="flex items-center justify-between mb-3">
+						<button
+							type="button"
+							className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+							onClick={() =>
+								setCursor(
+									new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1),
+								)
+							}
+							aria-label="Previous month"
+						>
+							‹
+						</button>
+						<div className="font-semibold">
+							{cursor.toLocaleString(undefined, {
+								month: "long",
+								year: "numeric",
+							})}
+						</div>
+						<button
+							type="button"
+							className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+							onClick={() =>
+								setCursor(
+									new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1),
+								)
+							}
+							aria-label="Next month"
+						>
+							›
+						</button>
+					</div>
 
-				<select
-					className="border rounded p-2"
-					onChange={(e) => onLoadView(e.target.value)}
-					value=""
-				>
-					<option value="" disabled>
-						Select View
-					</option>
-					{names.map((n) => (
-						<option key={n} value={n}>
-							{n}
-						</option>
-					))}
-				</select>
+					{/* weekdays */}
+					<div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
+						{["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
+							<div key={d}>{d}</div>
+						))}
+					</div>
 
-				<button
-					type="button"
-					onClick={onOpenChart}
-					className="px-6 py-3 rounded-xl text-base font-semibold border shadow-sm transition-all duration-300 ease-in-out bg-white/95 text-gray-800 border-gray-300 hover:bg-white hover:shadow-md hover:scale-105 hover:-translate-y-0.5 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-500 dark:hover:bg-gray-600 dark:hover:shadow-lg cursor-pointer select-none backdrop-blur-sm"
-				>
-					Compare (Chart)
-				</button>
+					{/* days */}
+					<div className="grid grid-cols-7 gap-1 text-center">
+						{grid.map((cell) =>
+							cell.date ? (
+								<button
+									key={cell.key}
+									type="button"
+									onClick={() => pickDay(cell.date as Date)}
+									className={[
+										"h-9 rounded-full text-sm",
+										isInRange(cell.date as Date)
+											? "bg-blue-600 text-white"
+											: "hover:bg-gray-100 dark:hover:bg-gray-700",
+									].join(" ")}
+								>
+									{(cell.date as Date).getDate()}
+								</button>
+							) : (
+								<div key={cell.key} />
+							),
+						)}
+					</div>
+
+					{/* presets */}
+					<div className="mt-4 grid grid-cols-2 gap-2">
+						{presets.map((p) => (
+							<button
+								key={p.label}
+								type="button"
+								className="h-9 px-3 rounded-lg border text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-left"
+								onClick={() => {
+									const [s, e] = p.calc();
+									applyRange(s, e);
+								}}
+							>
+								{p.label}
+							</button>
+						))}
+					</div>
+
+					{/* actions */}
+					<div className="mt-3 flex justify-end gap-2">
+						<button
+							type="button"
+							className="h-9 px-3 rounded-lg border"
+							onClick={() => {
+								setStart(parseYMD(from));
+								setEnd(parseYMD(to));
+								setCursor(parseYMD(from));
+								setOpen(false);
+							}}
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							className="h-9 px-3 rounded-lg bg-blue-600 text-white"
+							onClick={() => applyRange(start, end)}
+						>
+							Apply
+						</button>
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+
+/* ───────────── Controls ───────────── */
+
+export function Controls({
+	from,
+	to,
+	groupBy,
+	setFrom,
+	setTo,
+	setGroupBy,
+	viewName,
+	setViewName,
+	names,
+	onSaveView,
+	onLoadView,
+	onOpenChart,
+	onExportCSV,
+	onCopyCSV,
+}: ControlsProps) {
+	return (
+		<div className="p-4 rounded-2xl border bg-white/80 dark:bg-gray-800/80 shadow-sm">
+			<div className="flex flex-wrap items-end gap-4">
+				<DateRangePickerLite
+					from={from}
+					to={to}
+					onChange={(f, t) => {
+						setFrom(f);
+						setTo(t);
+					}}
+				/>
+
+				<label className="flex flex-col">
+					<span className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
+						Group by
+					</span>
+					<input
+						value={groupBy}
+						onChange={(e) => setGroupBy(e.target.value)}
+						placeholder="day,event,adapter"
+						className="w-[320px] h-11 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3"
+					/>
+				</label>
+
+				<div className="ml-auto flex flex-wrap items-center gap-3">
+					{/* Export buttons */}
+					<button
+						type="button"
+						onClick={onCopyCSV}
+						title="Copy CSV to clipboard"
+						className="h-11 px-4 rounded-xl border bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+					>
+						📋
+					</button>
+					<button
+						type="button"
+						onClick={onExportCSV}
+						title="Export to CSV"
+						className="h-11 px-4 rounded-xl border bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+					>
+						⤓ CSV
+					</button>
+
+					{/* Save / Select view */}
+					<div className="flex items-center gap-2">
+						<input
+							placeholder="view name"
+							className="h-11 w-40 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3"
+							value={viewName}
+							onChange={(e) => setViewName(e.target.value)}
+						/>
+						<button
+							type="button"
+							onClick={onSaveView}
+							className="h-11 px-4 rounded-xl bg-blue-600 text-white font-semibold"
+						>
+							Save View
+						</button>
+						<select
+							className="h-11 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3"
+							onChange={(e) => onLoadView(e.target.value)}
+							value=""
+						>
+							<option value="" disabled>
+								Select View
+							</option>
+							{names.map((n) => (
+								<option key={n} value={n}>
+									{n}
+								</option>
+							))}
+						</select>
+
+						<button
+							type="button"
+							onClick={onOpenChart}
+							className="h-11 px-4 rounded-xl border bg-white/90 dark:bg-gray-700"
+						>
+							Compare (Chart)
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
 }
+
+export default Controls;
