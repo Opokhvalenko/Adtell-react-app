@@ -12,8 +12,20 @@
 			"destination": "https://addtell-backend.onrender.com/ads/:path*"
 		},
 		{
+			"source": "/ads-debug",
+			"destination": "https://addtell-backend.onrender.com/ads-debug"
+		},
+		{
 			"source": "/create-lineitem",
 			"destination": "https://addtell-backend.onrender.com/create-lineitem"
+		},
+		{
+			"source": "/public/:path*",
+			"destination": "https://addtell-backend.onrender.com/public/:path*"
+		},
+		{
+			"source": "/assets/:path*",
+			"destination": "https://addtell-backend.onrender.com/assets/:path*"
 		},
 		{ "source": "/(.*)", "destination": "/" }
 	]
