@@ -1,20 +1,32 @@
 {
-	"buildCommand": "npm run build",
-	"outputDirectory": "dist",
-	"framework": "vite",
-	"rewrites": [
-		{
-			"source": "/api/:path*",
-			"destination": "https://addtell-backend.onrender.com/api/:path*"
-		},
-		{
-			"source": "/ads/:path*",
-			"destination": "https://addtell-backend.onrender.com/ads/:path*"
-		},
-		{
-			"source": "/create-lineitem",
-			"destination": "https://addtell-backend.onrender.com/create-lineitem"
-		},
-		{ "source": "/(.*)", "destination": "/" }
-	]
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://addtell-backend.onrender.com/api/:path*"
+    },
+    {
+      "source": "/ads/:path*",
+      "destination": "https://addtell-backend.onrender.com/ads/:path*"
+    },
+    {
+      "source": "/ads-debug",
+      "destination": "https://addtell-backend.onrender.com/ads-debug"
+    },
+    {
+      "source": "/create-lineitem",
+      "destination": "https://addtell-backend.onrender.com/create-lineitem"
+    },
+    {
+      "source": "/public/:path*",
+      "destination": "https://addtell-backend.onrender.com/public/:path*"
+    },
+    {
+      "source": "/assets/:path*",
+      "destination": "https://addtell-backend.onrender.com/assets/:path*"
+    },
+    { "source": "/(.*)", "destination": "/" }
+  ]
 }
