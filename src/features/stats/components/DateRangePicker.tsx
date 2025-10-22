@@ -1,27 +1,25 @@
 import { type FC, useEffect, useId, useMemo, useRef, useState } from "react";
 
 type Props = {
-	from: string; // YYYY-MM-DD
-	to: string; // YYYY-MM-DD
+	from: string;
+	to: string;
 	onChange: (from: string, to: string) => void;
 };
 
-// helpers
 function parseYMD(s: string) {
 	const [y, m, d] = s.split("-").map(Number);
 	return new Date(y, (m || 1) - 1, d || 1);
 }
 function toYMD(d: Date) {
-	const yyyy = d.getFullYear();
-	const mm = `${d.getMonth() + 1}`.padStart(2, "0");
-	const dd = `${d.getDate()}`.padStart(2, "0");
-	return `${yyyy}-${mm}-${dd}`;
+	const y = d.getFullYear(),
+		m = String(d.getMonth() + 1).padStart(2, "0"),
+		day = String(d.getDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
 }
 function fmtDisplay(d: Date) {
-	const mm = `${d.getMonth() + 1}`.padStart(2, "0");
-	const dd = `${d.getDate()}`.padStart(2, "0");
-	const yyyy = d.getFullYear();
-	return `${mm}/${dd}/${yyyy}`;
+	const m = String(d.getMonth() + 1).padStart(2, "0"),
+		day = String(d.getDate()).padStart(2, "0");
+	return `${m}/${day}/${d.getFullYear()}`;
 }
 
 type Cell = { date: Date | null; key: string };
@@ -36,8 +34,8 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 	const [end, setEnd] = useState<Date>(() => parseYMD(to));
 
 	useEffect(() => {
-		const s = parseYMD(from);
-		const e = parseYMD(to);
+		const s = parseYMD(from),
+			e = parseYMD(to);
 		setStart(s);
 		setEnd(e);
 		setCursor(s);
@@ -58,31 +56,20 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 		return () => document.removeEventListener("mousedown", onDoc);
 	}, [open, from, to]);
 
-	// build grid (Mon-first) with stable keys (no index keys)
 	const grid: Cell[] = useMemo(() => {
-		const y = cursor.getFullYear();
-		const m = cursor.getMonth();
+		const y = cursor.getFullYear(),
+			m = cursor.getMonth();
 		const first = new Date(y, m, 1);
-		const startIdx = (first.getDay() + 6) % 7; // Mon=0
-		const daysInMonth = new Date(y, m + 1, 0).getDate();
+		const startIdx = (first.getDay() + 6) % 7;
+		const days = new Date(y, m + 1, 0).getDate();
 		const cells: Cell[] = [];
-
-		// leading empty cells (previous month dates as keys)
-		for (let i = 0; i < startIdx; i++) {
-			const dt = new Date(y, m, 1 - (startIdx - i));
-			cells.push({ date: null, key: `lead-${y}-${m}-${dt.getDate()}` });
-		}
-		// current month
-		for (let d = 1; d <= daysInMonth; d++) {
-			const dt = new Date(y, m, d);
-			cells.push({ date: dt, key: `day-${y}-${m}-${d}` });
-		}
-		// trailing empty cells (next month dates as keys)
+		for (let i = 0; i < startIdx; i++)
+			cells.push({ date: null, key: `lead-${y}-${m}-${i}` });
+		for (let d = 1; d <= days; d++)
+			cells.push({ date: new Date(y, m, d), key: `day-${y}-${m}-${d}` });
 		const tail = (7 - (cells.length % 7)) % 7;
-		for (let i = 0; i < tail; i++) {
-			const dt = new Date(y, m + 1, i + 1);
-			cells.push({ date: null, key: `tail-${y}-${m}-${dt.getDate()}` });
-		}
+		for (let i = 0; i < tail; i++)
+			cells.push({ date: null, key: `tail-${y}-${m}-${i}` });
 		return cells;
 	}, [cursor]);
 
@@ -101,19 +88,17 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 			setEnd(d);
 		}
 	}
-
 	function applyRange(s: Date, e: Date) {
 		onChange(toYMD(s), toYMD(e));
 		setOpen(false);
 	}
-
 	const isInRange = (d: Date) => d >= start && d <= end;
 
 	return (
 		<div ref={rootRef} className="relative">
 			<span
 				id={labelId}
-				className="text-sm font-semibold text-gray-700 dark:text-gray-200 block mb-1"
+				className="block mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200"
 			>
 				Metrics
 			</span>
@@ -124,7 +109,7 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 				aria-expanded={open}
 				aria-labelledby={labelId}
 				onClick={() => setOpen((v) => !v)}
-				className="w-[320px] h-11 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 text-left font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+				className="w-[320px] h-11 rounded-xl border border-zinc-300 bg-white px-4 text-left font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:border-zinc-600 dark:bg-zinc-800"
 			>
 				{label}
 			</button>
@@ -134,13 +119,12 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 					role="dialog"
 					aria-label="Choose date range"
 					tabIndex={-1}
-					className="absolute z-20 mt-2 w-[370px] rounded-2xl border bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl p-4"
+					className="absolute z-20 mt-2 w-[370px] rounded-2xl border border-zinc-300 bg-white shadow-2xl p-4 dark:border-zinc-700 dark:bg-zinc-800"
 				>
-					{/* header */}
 					<div className="flex items-center justify-between mb-3">
 						<button
 							type="button"
-							className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+							className="h-9 px-3 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 							onClick={() =>
 								setCursor(
 									new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1),
@@ -158,7 +142,7 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 						</div>
 						<button
 							type="button"
-							className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+							className="h-9 px-3 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 							onClick={() =>
 								setCursor(
 									new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1),
@@ -170,19 +154,17 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 						</button>
 					</div>
 
-					{/* weekdays */}
-					<div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
+					<div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-500 mb-1">
 						{["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
 							<div key={d}>{d}</div>
 						))}
 					</div>
 
-					{/* days */}
 					<div className="grid grid-cols-7 gap-1 text-center">
 						{grid.map((cell) => {
 							if (!cell.date) return <div key={cell.key} />;
-							const d = cell.date;
-							const inRange = isInRange(d);
+							const d = cell.date,
+								inRange = isInRange(d);
 							return (
 								<button
 									key={cell.key}
@@ -191,8 +173,8 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 									className={[
 										"h-9 rounded-full text-sm",
 										inRange
-											? "bg-blue-600 text-white"
-											: "hover:bg-gray-100 dark:hover:bg-gray-700",
+											? "bg-emerald-600 text-white"
+											: "hover:bg-zinc-100 dark:hover:bg-zinc-700",
 									].join(" ")}
 								>
 									{d.getDate()}
@@ -201,93 +183,89 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 						})}
 					</div>
 
-					{/* presets */}
 					<div className="mt-4 grid grid-cols-2 gap-2">
-						<button
-							type="button"
-							className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-							onClick={() => applyRange(new Date(), new Date())}
-						>
-							Today
-						</button>
-						<button
-							type="button"
-							className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-							onClick={() => {
-								const d = new Date();
-								d.setDate(d.getDate() - 1);
-								applyRange(d, d);
-							}}
-						>
-							Yesterday
-						</button>
-						<button
-							type="button"
-							className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-							onClick={() => {
-								const e = new Date();
-								const s = new Date();
-								s.setDate(s.getDate() - 6);
-								applyRange(s, e);
-							}}
-						>
-							Last 7 days
-						</button>
-						<button
-							type="button"
-							className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-							onClick={() => {
-								const e = new Date();
-								const s = new Date();
-								s.setDate(s.getDate() - 13);
-								applyRange(s, e);
-							}}
-						>
-							Last 14 days
-						</button>
-						<button
-							type="button"
-							className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-							onClick={() => {
-								const e = new Date();
-								const s = new Date();
-								s.setDate(s.getDate() - 29);
-								applyRange(s, e);
-							}}
-						>
-							Last 30 days
-						</button>
-						<button
-							type="button"
-							className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-							onClick={() => {
-								const n = new Date();
-								const s = new Date(n.getFullYear(), n.getMonth(), 1);
-								const e = new Date(n.getFullYear(), n.getMonth() + 1, 0);
-								applyRange(s, e);
-							}}
-						>
-							This Month
-						</button>
-						<button
-							type="button"
-							className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 col-span-2"
-							onClick={() => {
-								const n = new Date();
-								const s = new Date(n.getFullYear(), n.getMonth() - 1, 1);
-								const e = new Date(n.getFullYear(), n.getMonth(), 0);
-								applyRange(s, e);
-							}}
-						>
-							Last Month
-						</button>
+						{[
+							{
+								label: "Today",
+								calc: () => {
+									const d = new Date();
+									return [d, d];
+								},
+							},
+							{
+								label: "Yesterday",
+								calc: () => {
+									const d = new Date();
+									d.setDate(d.getDate() - 1);
+									return [d, d];
+								},
+							},
+							{
+								label: "Last 7 days",
+								calc: () => {
+									const e = new Date();
+									const s = new Date();
+									s.setDate(s.getDate() - 6);
+									return [s, e];
+								},
+							},
+							{
+								label: "Last 14 days",
+								calc: () => {
+									const e = new Date();
+									const s = new Date();
+									s.setDate(s.getDate() - 13);
+									return [s, e];
+								},
+							},
+							{
+								label: "Last 30 days",
+								calc: () => {
+									const e = new Date();
+									const s = new Date();
+									s.setDate(s.getDate() - 29);
+									return [s, e];
+								},
+							},
+							{
+								label: "This Month",
+								calc: () => {
+									const n = new Date();
+									return [
+										new Date(n.getFullYear(), n.getMonth(), 1),
+										new Date(n.getFullYear(), n.getMonth() + 1, 0),
+									];
+								},
+							},
+							{
+								label: "Last Month",
+								calc: () => {
+									const n = new Date();
+									return [
+										new Date(n.getFullYear(), n.getMonth() - 1, 1),
+										new Date(n.getFullYear(), n.getMonth(), 0),
+									];
+								},
+							},
+						].map((p) => (
+							<button
+								key={p.label}
+								type="button"
+								className="h-9 px-3 rounded-lg border border-zinc-300 bg-white text-left hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+								onClick={() => {
+									const [s, e] = p.calc();
+									applyRange(s, e);
+								}}
+							>
+								{p.label}
+							</button>
+						))}
 					</div>
 
-					{/* actions */}
 					<div className="mt-3 flex justify-end gap-2">
 						<button
 							type="button"
-							className="h-9 px-3 rounded-lg border"
+							className="h-9 px-3 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 							onClick={() => {
 								setStart(parseYMD(from));
 								setEnd(parseYMD(to));
@@ -299,7 +277,7 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 						</button>
 						<button
 							type="button"
-							className="h-9 px-3 rounded-lg bg-blue-600 text-white"
+							className="h-9 px-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600"
 							onClick={() => applyRange(start, end)}
 						>
 							Apply
@@ -310,5 +288,4 @@ const DateRangePicker: FC<Props> = ({ from, to, onChange }) => {
 		</div>
 	);
 };
-
 export default DateRangePicker;

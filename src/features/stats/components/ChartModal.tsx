@@ -53,7 +53,7 @@ export function ChartModal({
 					</h2>
 					<button
 						type="button"
-						className="px-6 py-3 rounded-xl text-base font-semibold border shadow-sm transition-all duration-300 ease-in-out bg-white/95 text-gray-800 border-gray-300 hover:bg-white hover:shadow-md hover:scale-105 hover:-translate-y-0.5 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-500 dark:hover:bg-gray-600 dark:hover:shadow-lg cursor-pointer select-none backdrop-blur-sm"
+						className="px-6 py-3 rounded-xl text-base font-semibold border border-border shadow-sm transition-all bg-surface text-gray-800 hover:shadow-md dark:bg-zinc-800 dark:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 						onClick={onClose}
 					>
 						Close

@@ -19,6 +19,9 @@ declare global {
 		bidder?: string;
 		event?: string;
 		message?: string;
+		type?: string;
+		payload?: unknown;
+		src?: "prebid" | "gpt";
 		[key: string]: unknown;
 	};
 

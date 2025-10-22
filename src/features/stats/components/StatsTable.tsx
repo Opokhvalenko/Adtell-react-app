@@ -19,7 +19,6 @@ type Props = {
 	error?: unknown;
 };
 
-/* helpers */
 type MaybeId = { id?: unknown };
 type MaybeAccessorKey = { accessorKey?: string | number | symbol };
 function getColId(c: ColumnDef<StatRow, unknown>, index: number): string {
@@ -90,7 +89,7 @@ export function StatsTable({
 	const metricWidth = "8.5rem";
 
 	return (
-		<div className="overflow-x-auto rounded-2xl border bg-white/70 dark:bg-white/5 shadow-sm">
+		<div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white/70 dark:bg-white/5 dark:border-zinc-700 shadow-sm">
 			<table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
 				<colgroup>
 					{columns.map((c, i) => {
@@ -118,12 +117,12 @@ export function StatsTable({
 													? "descending"
 													: "none"
 										}
-										className="bg-gray-50/90 dark:bg-gray-900/80 backdrop-blur supports-[backdrop-filter]:bg-gray-50/70 sticky top-0 border-b"
+										className="sticky top-0 border-b border-zinc-200 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/80 backdrop-blur supports-[backdrop-filter]:bg-white/70"
 									>
 										<div className="flex items-center justify-between px-3 pt-2">
 											<button
 												type="button"
-												className="cursor-pointer select-none flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-100"
+												className="cursor-pointer select-none flex items-center gap-1 font-semibold text-zinc-700 dark:text-zinc-100"
 												onClick={
 													canSort && sortHandler ? sortHandler : undefined
 												}
@@ -149,17 +148,12 @@ export function StatsTable({
 													}
 												</span>
 											</button>
-
-											<div className="flex items-center gap-2 text-gray-300">
-												<span aria-hidden>📈</span>
-												<span aria-hidden>📌</span>
-											</div>
 										</div>
 
 										{h.column.getCanFilter() && (
 											<div className="px-3 pb-2">
 												<input
-													className="w-full h-8 rounded-md border px-2 text-xs placeholder:text-gray-400 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-300"
+													className="w-full h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs placeholder:text-zinc-400 dark:bg-zinc-700 dark:text-white dark:border-zinc-600 dark:placeholder-zinc-300"
 													placeholder="Filter…"
 													aria-label={`Filter ${String(
 														h.column.columnDef.header ?? h.column.id,
@@ -194,7 +188,7 @@ export function StatsTable({
 					) : table.getRowModel().rows.length === 0 ? (
 						<tr>
 							<td
-								className="p-4 text-gray-600 dark:text-gray-300"
+								className="p-4 text-zinc-600 dark:text-zinc-300"
 								colSpan={columns.length}
 							>
 								No data
@@ -204,7 +198,7 @@ export function StatsTable({
 						table.getRowModel().rows.map((row) => (
 							<tr
 								key={row.id}
-								className="border-t odd:bg-gray-50/50 dark:odd:bg-white/5 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+								className="border-t border-zinc-200 dark:border-zinc-700 odd:bg-zinc-50/50 dark:odd:bg-white/5 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
 							>
 								{row.getVisibleCells().map((cell) => {
 									const isMetric = metricIds.has(cell.column.id);
@@ -229,13 +223,13 @@ export function StatsTable({
 				</tbody>
 			</table>
 
-			<div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-white/70 dark:bg-gray-900/50">
+			<div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 bg-white/70 dark:bg-zinc-900/50">
 				<div className="flex items-center gap-2">
-					<span className="text-sm text-gray-600 dark:text-gray-300">
+					<span className="text-sm text-zinc-600 dark:text-zinc-300">
 						Page Size:
 					</span>
 					<select
-						className="h-9 min-w-[72px] rounded-md border px-2 font-mono"
+						className="h-9 min-w-[72px] rounded-md border border-zinc-300 bg-white px-2 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:bg-zinc-800 dark:border-zinc-600"
 						value={pageSize}
 						onChange={(e) => table.setPageSize(Number(e.target.value))}
 					>
@@ -247,7 +241,7 @@ export function StatsTable({
 					</select>
 				</div>
 
-				<div className="text-sm text-gray-600 dark:text-gray-300">
+				<div className="text-sm text-zinc-600 dark:text-zinc-300">
 					{(() => {
 						const total = data.length;
 						const start = Math.min(total, pageIndex * pageSize + 1);
@@ -257,45 +251,39 @@ export function StatsTable({
 				</div>
 
 				<div className="flex items-center gap-1">
-					<button
-						type="button"
-						onClick={() => table.firstPage()}
-						disabled={!table.getCanPreviousPage()}
-						className="h-9 w-9 rounded-md border disabled:opacity-40"
-						aria-label="First page"
-					>
-						«
-					</button>
-					<button
-						type="button"
-						onClick={() => table.previousPage()}
-						disabled={!table.getCanPreviousPage()}
-						className="h-9 w-9 rounded-md border disabled:opacity-40"
-						aria-label="Prev page"
-					>
-						‹
-					</button>
-					<div className="px-2 text-sm">
-						Page {pageIndex + 1} of {Math.max(1, table.getPageCount())}
-					</div>
-					<button
-						type="button"
-						onClick={() => table.nextPage()}
-						disabled={!table.getCanNextPage()}
-						className="h-9 w-9 rounded-md border disabled:opacity-40"
-						aria-label="Next page"
-					>
-						›
-					</button>
-					<button
-						type="button"
-						onClick={() => table.lastPage()}
-						disabled={!table.getCanNextPage()}
-						className="h-9 w-9 rounded-md border disabled:opacity-40"
-						aria-label="Last page"
-					>
-						»
-					</button>
+					{[
+						{
+							label: "«",
+							act: () => table.firstPage(),
+							dis: !table.getCanPreviousPage(),
+						},
+						{
+							label: "‹",
+							act: () => table.previousPage(),
+							dis: !table.getCanPreviousPage(),
+						},
+						{
+							label: "›",
+							act: () => table.nextPage(),
+							dis: !table.getCanNextPage(),
+						},
+						{
+							label: "»",
+							act: () => table.lastPage(),
+							dis: !table.getCanNextPage(),
+						},
+					].map((b) => (
+						<button
+							key={b.label}
+							type="button"
+							onClick={b.act}
+							disabled={b.dis}
+							aria-label={b.label}
+							className="h-9 w-9 rounded-md border border-zinc-300 bg-white hover:bg-zinc-50 disabled:opacity-40 dark:bg-zinc-800 dark:border-zinc-600 dark:hover:bg-zinc-700"
+						>
+							{b.label}
+						</button>
+					))}
 				</div>
 			</div>
 		</div>

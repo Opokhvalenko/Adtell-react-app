@@ -29,9 +29,9 @@ function PrebidSlot({
 	}, [id, sizes]);
 
 	return (
-		<div>
+		<div className="rounded-2xl border border-zinc-200 bg-white/70 p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60">
 			<div ref={ref} />
-			<div className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
+			<div className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
 				{label} — {sizes.join(", ")}
 			</div>
 		</div>
@@ -60,65 +60,63 @@ export default function AdDemo() {
 
 	return (
 		<div className="max-w-6xl mx-auto p-6 space-y-8">
-			{/* Header section */}
-			<div className="text-center py-8">
-				<div className="inline-flex items-center gap-4 mb-4">
-					<div className="w-16 h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-						<span className="text-white text-2xl">🎯</span>
+			{/* Header */}
+			<header className="text-center py-6">
+				<div className="inline-flex items-center gap-4">
+					<div className="w-12 h-12 rounded-xl bg-emerald-600 text-white grid place-items-center shadow-sm">
+						🎯
 					</div>
 					<div className="text-left">
-						<h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 dark:from-gray-100 dark:via-blue-100 dark:to-purple-100 bg-clip-text text-transparent">
+						<h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
 							Ad Demo
 						</h1>
-						<p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
+						<p className="text-sm text-zinc-600 dark:text-zinc-400">
 							Interactive advertising auction demonstration
 						</p>
 					</div>
 				</div>
+			</header>
 
-				{/* Action buttons */}
-				<div className="flex items-center justify-center gap-4">
-					<button
-						type="button"
-						disabled={!ready}
-						onClick={start}
-						className="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium shadow-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
-					>
-						<span className="text-lg mr-2">🚀</span>
-						{ready ? "Start auction" : "Initializing…"}
-					</button>
-					<button
-						type="button"
-						disabled={!ready}
-						onClick={refresh}
-						className="px-6 py-3 rounded-lg bg-gradient-to-r from-green-600 to-green-700 text-white font-medium shadow-lg hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
-					>
-						<span className="text-lg mr-2">🔄</span>
-						Refresh
-					</button>
-				</div>
+			{/* Actions */}
+			<div className="flex items-center justify-center gap-3">
+				<button
+					type="button"
+					disabled={!ready}
+					onClick={start}
+					className="h-10 px-4 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					🚀 {ready ? "Start auction" : "Initializing…"}
+				</button>
+				<button
+					type="button"
+					disabled={!ready}
+					onClick={refresh}
+					className="h-10 px-4 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+				>
+					🔄 Refresh
+				</button>
 			</div>
 
-			{/* Stats section */}
+			{/* Stats */}
 			<AuctionStats />
 
-			{/* Ad slots section */}
-			<div className="space-y-6">
-				<h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center">
+			{/* Slots */}
+			<section className="space-y-4">
+				<h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 text-center">
 					Advertisement Slots
 				</h2>
+
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div className="space-y-4">
-						<h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-							<span className="text-xl">📊</span>
-							Top Banner (728x90)
+					<div className="space-y-3">
+						<h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+							📊 Top Banner (728×90)
 						</h3>
 						<PrebidSlot id={topId} sizes={["728x90"]} label="Top Banner" />
 					</div>
-					<div className="space-y-4">
-						<h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-							<span className="text-xl">📱</span>
-							Side Banner (300x600, 300x250)
+
+					<div className="space-y-3">
+						<h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+							📱 Side Banner (300×600, 300×250)
 						</h3>
 						<PrebidSlot
 							id={sideId}
@@ -127,7 +125,7 @@ export default function AdDemo() {
 						/>
 					</div>
 				</div>
-			</div>
+			</section>
 		</div>
 	);
 }
