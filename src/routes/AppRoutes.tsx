@@ -128,7 +128,22 @@ const routes = [
 				),
 			},
 
-			...(ADS_DEBUG ? [{ path: "ads-debug", element: <AdsDebugPage /> }] : []),
+			...(ADS_DEBUG
+				? [
+						{
+							path: "ads/debug",
+							element: (
+								<RequireAuth>
+									<AdsDebugPage />
+								</RequireAuth>
+							),
+						},
+						{
+							path: "ads-debug",
+							element: <Navigate to="/ads/debug" replace />,
+						},
+					]
+				: []),
 		],
 	},
 	{
