@@ -2,62 +2,81 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* dark-variant для v4 */
+@custom-variant dark (&:where(html.dark &));
 
-
+/* ── fonts ─────────────────────────────────────────────── */
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Light.woff2") format("woff2"); font-weight:300; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Medium.woff2") format("woff2"); font-weight:500; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-SemiBold.woff2") format("woff2"); font-weight:600; font-style:normal; font-display:swap; }
 @font-face { font-family:"Open Sans"; src:url("/fonts/OpenSans-Bold.woff2") format("woff2"); font-weight:700; font-style:normal; font-display:swap; }
 
+/* ── base ──────────────────────────────────────────────── */
 @layer base {
   :root { color-scheme: light dark; }
+  html { font-family:"Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+}
 
-  :host {
-    --bg-primary:#fff;
-    --bg-secondary:#f9fafb;
-    --text-primary:#111827;
-    --text-secondary:#6b7280;
-    --border-color:#d1d5db;
-    --input-bg:#fff;
-    --input-border:#d1d5db;
-    --button-bg:#3b82f6;
-    --button-hover:#2563eb;
-    font-family:"Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-  }
+/* ── Tailwind v4 design tokens ─────────────────────────── */
+@theme {
+  --color-accent: oklch(0.70 0.12 152);     
+  --color-accent-600: oklch(0.63 0.12 152);
 
-  @media (prefers-color-scheme: dark) {
-    :host {
-      --bg-primary:#1f2937;
-      --bg-secondary:#111827;
-      --text-primary:#f9fafb;
-      --text-secondary:#9ca3af;
-      --border-color:#374151;
-      --input-bg:#374151;
-      --input-border:#4b5563;
-      --button-bg:#3b82f6;
-      --button-hover:#2563eb;
-    }
+  --color-border: var(--color-zinc-300);
+  --color-surface: #ffffff;
+  --color-surface-2: color-mix(in oklab, white 85%, transparent);
+  --color-muted: var(--color-zinc-500);
+}
+
+html.dark {
+  @theme {
+    --color-accent: oklch(0.74 0.12 152);
+    --color-accent-600: oklch(0.69 0.12 152);
+
+    --color-border: var(--color-zinc-700);
+    --color-surface: rgb(17 24 39 / 0.92);
+    --color-surface-2: rgb(17 24 39 / 0.75);
+    --color-muted: var(--color-zinc-400);
   }
 }
 
 @layer components {
-  .bg-surface { background-color:var(--bg-primary); }
-  .text-primary { color:var(--text-primary); }
-  .text-secondary { color:var(--text-secondary); }
-  .border-muted { border-color:var(--border-color); }
-
-  .input-field {
-    @apply w-full rounded-lg p-3 border placeholder-gray-500
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-    background-color:var(--input-bg);
-    border-color:var(--input-border);
-    color:var(--text-primary);
-  }
-
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium text-white shadow;
-    background-color:var(--button-bg);
+    @apply inline-flex items-center justify-center h-11 px-4 rounded-xl
+           bg-accent text-white font-semibold
+           hover:bg-accent-600
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent;
   }
-  .btn-primary:hover { background-color:var(--button-hover); }
+  .btn-ghost {
+    @apply h-11 px-4 rounded-xl border border-border bg-surface
+           hover:bg-black/5 dark:hover:bg-white/10
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
+  }
+  .input-field {
+    @apply h-11 rounded-xl border border-border bg-surface px-3
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-3 h-11 px-4 rounded-xl
+           border border-border bg-surface text-gray-800 dark:text-gray-100
+           transition-all duration-150 select-none
+           hover:bg-black/5 dark:hover:bg-white/10;
+  }
+  .chip--active {
+    @apply bg-accent/10 border-accent-600 text-accent;
+  }
+  .switch-track {
+    @apply inline-flex items-center h-5 w-9 rounded-full
+           border border-border bg-white/70 dark:bg-gray-700;
+  }
+  .switch-track--on {
+    @apply bg-accent/20 border-accent-600;
+  }
+  .switch-thumb {
+    @apply block h-3.5 w-3.5 rounded-full mx-1 bg-gray-500 transition-transform;
+  }
+  .switch-thumb--on {
+    @apply translate-x-3 bg-accent;
+  }
 }

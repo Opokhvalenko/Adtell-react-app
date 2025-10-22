@@ -12,7 +12,6 @@ type Msg =
 
 const MIN_HEIGHT = 600;
 
-// type guard для resize-повідомлення
 function isResizeMsg(
 	d: Msg | unknown,
 ): d is { type: "resize"; height: number } {
@@ -38,9 +37,7 @@ export default function CreateAdShadow() {
 			lastDark = dark;
 			try {
 				win.postMessage({ type: "theme", dark }, expected);
-			} catch {
-				// ignore
-			}
+			} catch {}
 		};
 
 		const scheduleTheme = (win: Window) => {
@@ -58,7 +55,6 @@ export default function CreateAdShadow() {
 					el.style.height = `${Math.max(MIN_HEIGHT, e.data.height)}px`;
 				return;
 			}
-
 			if (e.data?.type === "ready") {
 				lastDark = undefined;
 				postTheme(win);
@@ -81,7 +77,6 @@ export default function CreateAdShadow() {
 			}
 		};
 
-		// типізуємо кастомну подію як EventListener
 		const onThemeCustom: EventListener = () => {
 			const win = frameRef.current?.contentWindow;
 			if (win) scheduleTheme(win);
@@ -102,26 +97,28 @@ export default function CreateAdShadow() {
 
 	return (
 		<div className="max-w-6xl mx-auto p-6 space-y-6">
+			{/* Header */}
 			<header className="text-center py-6">
 				<div className="inline-flex items-center gap-4">
-					<div className="w-12 h-12 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow">
-						<span className="text-white text-xl">✨</span>
+					<div className="w-12 h-12 rounded-xl bg-emerald-600 text-white grid place-items-center shadow-sm">
+						✨
 					</div>
 					<div className="text-left">
-						<h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 dark:from-gray-100 dark:via-blue-100 dark:to-purple-100 bg-clip-text text-transparent">
+						<h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
 							Create Advertisement
 						</h1>
-						<p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+						<p className="text-sm text-zinc-600 dark:text-zinc-400">
 							Design and configure your campaigns
 						</p>
 					</div>
 				</div>
 			</header>
 
-			<div className="relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow">
+			{/* Frame card */}
+			<div className="relative rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden dark:border-zinc-700 dark:bg-zinc-900">
 				{loading && !broken && (
 					<div className="absolute inset-0 grid place-items-center">
-						<div className="animate-pulse text-sm text-gray-500 dark:text-gray-400">
+						<div className="animate-pulse text-sm text-zinc-500 dark:text-zinc-400">
 							Loading form…
 						</div>
 					</div>
@@ -158,7 +155,7 @@ export default function CreateAdShadow() {
 				/>
 			</div>
 
-			<p className="text-center text-xs text-slate-500">
+			<p className="text-center text-xs text-zinc-500">
 				If the form doesn’t appear, open it{" "}
 				<a href={src} target="_blank" rel="noreferrer" className="underline">
 					in a new tab

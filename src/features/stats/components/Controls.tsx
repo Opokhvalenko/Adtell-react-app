@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 export type ControlsProps = {
-	from: string; // YYYY-MM-DD
-	to: string; // YYYY-MM-DD
+	from: string;
+	to: string;
 	groupBy: string;
 	setFrom: (v: string) => void;
 	setTo: (v: string) => void;
@@ -331,24 +331,26 @@ function DateRangePickerLite({
 
 /* ───────────── Controls ───────────── */
 
-export function Controls({
-	from,
-	to,
-	groupBy,
-	setFrom,
-	setTo,
-	setGroupBy,
-	viewName,
-	setViewName,
-	names,
-	onSaveView,
-	onLoadView,
-	onOpenChart,
-	onExportCSV,
-	onCopyCSV,
-}: ControlsProps) {
+export function Controls(props: ControlsProps) {
+	const {
+		from,
+		to,
+		groupBy,
+		setFrom,
+		setTo,
+		setGroupBy,
+		viewName,
+		setViewName,
+		names,
+		onSaveView,
+		onLoadView,
+		onOpenChart,
+		onExportCSV,
+		onCopyCSV,
+	} = props;
+
 	return (
-		<div className="p-4 rounded-2xl border bg-white/80 dark:bg-gray-800/80 shadow-sm">
+		<div className="p-4 rounded-2xl border border-zinc-200 bg-white/80 shadow-sm dark:border-zinc-700 dark:bg-zinc-800/80">
 			<div className="flex flex-wrap items-end gap-4">
 				<DateRangePickerLite
 					from={from}
@@ -360,53 +362,52 @@ export function Controls({
 				/>
 
 				<label className="flex flex-col">
-					<span className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
+					<span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 mb-1">
 						Group by
 					</span>
 					<input
 						value={groupBy}
 						onChange={(e) => setGroupBy(e.target.value)}
 						placeholder="day,event,adapter"
-						className="w-[320px] h-11 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3"
+						className="w-[320px] h-11 rounded-xl border border-zinc-300 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:border-zinc-600 dark:bg-zinc-800"
 					/>
 				</label>
 
 				<div className="ml-auto flex flex-wrap items-center gap-3">
-					{/* Export buttons */}
 					<button
 						type="button"
 						onClick={onCopyCSV}
 						title="Copy CSV to clipboard"
-						className="h-11 px-4 rounded-xl border bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+						className="h-11 px-4 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 					>
 						📋
 					</button>
+
 					<button
 						type="button"
 						onClick={onExportCSV}
 						title="Export to CSV"
-						className="h-11 px-4 rounded-xl border bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+						className="h-11 px-4 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 					>
 						⤓ CSV
 					</button>
 
-					{/* Save / Select view */}
 					<div className="flex items-center gap-2">
 						<input
 							placeholder="view name"
-							className="h-11 w-40 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3"
+							className="h-11 w-40 rounded-xl border border-zinc-300 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:border-zinc-600 dark:bg-zinc-800"
 							value={viewName}
 							onChange={(e) => setViewName(e.target.value)}
 						/>
 						<button
 							type="button"
 							onClick={onSaveView}
-							className="h-11 px-4 rounded-xl bg-blue-600 text-white font-semibold"
+							className="h-11 px-4 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600"
 						>
 							Save View
 						</button>
 						<select
-							className="h-11 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3"
+							className="h-11 rounded-xl border border-zinc-300 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:border-zinc-600 dark:bg-zinc-800"
 							onChange={(e) => onLoadView(e.target.value)}
 							value=""
 						>
@@ -423,7 +424,7 @@ export function Controls({
 						<button
 							type="button"
 							onClick={onOpenChart}
-							className="h-11 px-4 rounded-xl border bg-white/90 dark:bg-gray-700"
+							className="h-11 px-4 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 						>
 							Compare (Chart)
 						</button>
@@ -433,5 +434,4 @@ export function Controls({
 		</div>
 	);
 }
-
 export default Controls;

@@ -10,7 +10,7 @@ export default function Footer() {
 	const builtAt = new Date(iso).toLocaleString();
 
 	return (
-		<footer className="relative isolate overflow-hidden bg-gradient-to-br from-slate-100 via-emerald-50 to-cyan-50 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 shadow-2xl w-full">
+		<footer className="relative isolate overflow-hidden bg-gradient-to-br from-slate-100 via-emerald-50 to-cyan-50 dark:bg-transparent dark:from-transparent dark:via-transparent dark:to-transparent shadow-2xl w-full">
 			<div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-t from-black/5 to-transparent dark:from-white/5" />
 			<div className="pointer-events-none absolute top-0 left-0 w-full h-2 -z-10 bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
 			<div className="pointer-events-none absolute top-0 left-0 w-full h-1 -z-10 bg-gradient-to-r from-transparent via-teal-500/50 to-transparent mt-0.5" />
