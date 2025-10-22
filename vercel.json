@@ -8,8 +8,8 @@
 			"destination": "https://addtell-backend.onrender.com/api/:path*"
 		},
 		{
-			"source": "/ads/:path*",
-			"destination": "https://addtell-backend.onrender.com/ads/:path*"
+			"source": "/auth/:path*",
+			"destination": "https://addtell-backend.onrender.com/api/auth/:path*"
 		},
 		{
 			"source": "/ads-debug",
