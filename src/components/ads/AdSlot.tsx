@@ -71,7 +71,9 @@ export default function AdSlot({
 							if (bid && el) {
 								mod.renderBidInto(el, bid, { endpoint: ep });
 							}
-						} catch {}
+						} catch (e) {
+							console.error("[AdSlot] fallback bid failed:", e);
+						}
 					}, graceMs);
 
 					return () => clearTimeout(t);
