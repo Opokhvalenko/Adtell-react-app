@@ -46,3 +46,6 @@ build
 coverage/
 reports/
 test-results/
+
+screenshots/deployed-*
+screenshots/auction-*
