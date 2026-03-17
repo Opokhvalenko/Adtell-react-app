@@ -40,11 +40,17 @@ export default function RegisterForm() {
 				setPending(true);
 				try {
 					await apiRegister(values.email.trim(), values.password);
+				} catch (e) {
+					setErr(toMessage(e, "Registration failed"));
+					setPending(false);
+					return;
+				}
+				try {
 					await apiLogin(values.email.trim(), values.password);
 					await hydrate();
 					navigate("/", { replace: true });
-				} catch (e) {
-					setErr(toMessage(e, "Registration failed"));
+				} catch {
+					navigate("/login", { replace: true });
 				} finally {
 					setPending(false);
 				}

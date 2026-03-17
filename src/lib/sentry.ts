@@ -18,6 +18,15 @@ export function initSentry() {
 		integrations: [new Replay({ maskAllText: false, blockAllMedia: false })],
 		beforeSend(event) {
 			if (event.request?.url?.includes("password")) return null;
+			if (event.request?.data) {
+				const data =
+					typeof event.request.data === "string"
+						? event.request.data
+						: JSON.stringify(event.request.data);
+				if (data.includes("password") || data.includes("token")) {
+					event.request.data = "[filtered]";
+				}
+			}
 			return event;
 		},
 		initialScope: { tags: { component: "frontend", version: "1.0.0" } },
