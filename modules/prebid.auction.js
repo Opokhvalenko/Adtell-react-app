@@ -429,9 +429,37 @@ async function ensurePrebid() {
 				const sizes = bid.mediaTypes?.banner?.sizes ||
 					bid.sizes || [[300, 250]];
 				const [w0, h0] = sizes[0];
-				const ad = `<div style="width:${w0}px;height:${h0}px;display:flex;align-items:center;justify-content:center;
-     border:2px dashed #9CA3AF;border-radius:12px;background:repeating-linear-gradient(-45deg,#F9FAFB 0 12px,#F3F4F6 12px 24px);
-     font:700 14px system-ui;color:#374151">${label} — demo (${w0}×${h0})</div>`;
+
+				const themes = {
+					Adtelligent: {
+						bg: "linear-gradient(135deg, #059669, #047857)",
+						icon: "🎯",
+						tagline: "Smart Ad Delivery",
+					},
+					Bidmatic: {
+						bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+						icon: "📊",
+						tagline: "Programmatic Bidding",
+					},
+					Pokhvalenko: {
+						bg: "linear-gradient(135deg, #9333ea, #7c3aed)",
+						icon: "✨",
+						tagline: "Premium Creatives",
+					},
+				};
+				const t = themes[label] || {
+					bg: "linear-gradient(135deg, #4b5563, #374151)",
+					icon: "📢",
+					tagline: "Advertisement",
+				};
+
+				const ad = `<div style="width:${w0}px;height:${h0}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+     border-radius:16px;background:${t.bg};font-family:system-ui,-apple-system,sans-serif;color:#fff;text-align:center;padding:16px;box-sizing:border-box">
+     <span style="font-size:${w0 >= 728 ? 32 : 24}px">${t.icon}</span>
+     <span style="font-weight:800;font-size:${w0 >= 728 ? 20 : 14}px">${label}</span>
+     <span style="font-size:${w0 >= 728 ? 14 : 11}px;opacity:0.85">${t.tagline}</span>
+     <span style="font-size:10px;opacity:0.6;margin-top:4px">${w0}×${h0} · $${cpmBase.toFixed(2)} CPM</span>
+   </div>`;
 				return [
 					{
 						requestId: bid.bidId,
