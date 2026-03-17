@@ -56,17 +56,30 @@ export default function Layout() {
 
 			<main className="flex-1 w-full">
 				<div className="container mx-auto max-w-screen-xxl px-4 py-8">
-					<div
-						className="grid grid-cols-1 lg:grid-cols-12 gap-4
-					"
-					>
+					<div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+						<aside className="hidden lg:block lg:col-span-2 space-y-6">
+							<div className="border border-white/20 dark:border-gray-600/40 rounded-3xl shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/95 dark:bg-gray-700/95 p-3 inline-block">
+								<h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+									<span className="text-base">🎯</span>
+									Left — Adtelligent
+								</h3>
+								{/* biome-ignore lint/correctness/useUniqueElementIds: Prebid requires specific IDs */}
+								<AdSlot
+									id="ad-left-adtelligent"
+									sizes={["300x600", "300x250"]}
+									type="inline"
+									className="inline-block"
+								/>
+							</div>
+						</aside>
+
 						<section className="lg:col-span-8">
 							<div className="border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 p-6">
 								<Outlet />
 							</div>
 						</section>
 
-						<aside className="lg:col-span-2 space-y-6">
+						<aside className="hidden lg:block lg:col-span-2 space-y-6">
 							<div className="border border-white/20 dark:border-gray-600/40 rounded-3xl shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/95 dark:bg-gray-700/95 p-3 inline-block">
 								<h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
 									<span className="text-base">📊</span>

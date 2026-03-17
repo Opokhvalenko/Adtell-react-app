@@ -6,6 +6,8 @@ A news application with a built-in programmatic advertising platform. Features r
 
 [Live Demo](https://adtell-react-app.vercel.app/)
 
+> **Note:** Disable your ad blocker to see the ad auction system in action.
+
 ## Screenshots
 
 ![Feed page](screenshots/feed.png)
