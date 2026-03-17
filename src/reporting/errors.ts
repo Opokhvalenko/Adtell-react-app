@@ -25,9 +25,7 @@ export function reportError(err: unknown, extra: Extra = {}): void {
 			);
 			return;
 		}
-	} catch {
-		/* fallthrough */
-	}
+	} catch {}
 
 	void fetch(LOG_ENDPOINT, {
 		method: "POST",

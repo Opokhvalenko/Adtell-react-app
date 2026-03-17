@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import type { FeedItem } from "@/types/feed";
 import { useFeed } from "./useFeed";
 export default function Feed() {
-	const { items, isLoading, isError } = useFeed();
+	const { items, isLoading, isError, refetch } = useFeed();
 
 	if (isLoading) {
 		return (
@@ -29,7 +29,6 @@ export default function Feed() {
 
 	return (
 		<section className="space-y-8">
-			{/* Header with improved styling */}
 			<div className="text-center py-8 relative">
 				<div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-purple-600/5 to-pink-600/5 rounded-3xl blur-3xl"></div>
 				<div className="relative z-10">
@@ -48,7 +47,6 @@ export default function Feed() {
 					</div>
 				</div>
 
-				{/* Stats bar */}
 				<div className="flex items-center justify-center gap-6 text-sm text-gray-700 dark:text-gray-300">
 					<div className="flex items-center gap-2">
 						<span className="w-2 h-2 bg-green-500 rounded-full"></span>
@@ -74,7 +72,7 @@ export default function Feed() {
 					</p>
 					<button
 						type="button"
-						onClick={() => window.location.reload()}
+						onClick={() => refetch()}
 						className="inline-flex items-center justify-center gap-3 px-6 py-3 rounded-xl text-base font-semibold border shadow-lg transition-all duration-300 ease-in-out bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 hover:from-blue-500 hover:to-indigo-500 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5 active:scale-95 cursor-pointer select-none backdrop-blur-sm"
 					>
 						<span className="text-lg">🔄</span>
@@ -95,7 +93,6 @@ export default function Feed() {
 								aria-label={`Open "${it.title}"`}
 								className="block h-full"
 							>
-								{/* Article header with gradient */}
 								<div className="relative overflow-hidden rounded-t-3xl">
 									<div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10"></div>
 									<div className="relative p-8">
@@ -112,7 +109,6 @@ export default function Feed() {
 									</div>
 								</div>
 
-								{/* Article footer */}
 								<div className="p-8 pt-4">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-4 text-gray-700 dark:text-gray-300">

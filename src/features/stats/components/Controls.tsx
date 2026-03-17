@@ -20,7 +20,6 @@ export type ControlsProps = {
 	onCopyCSV: () => void;
 };
 
-/* ───────────── helpers ───────────── */
 function fmtDisplay(d: Date) {
 	const mm = `${d.getMonth() + 1}`.padStart(2, "0");
 	const dd = `${d.getDate()}`.padStart(2, "0");
@@ -38,7 +37,6 @@ function toYMD(d: Date) {
 	return `${yyyy}-${mm}-${dd}`;
 }
 
-/* ───────────── DateRangePickerLite ───────────── */
 function DateRangePickerLite({
 	from,
 	to,
@@ -220,7 +218,6 @@ function DateRangePickerLite({
 					tabIndex={-1}
 					className="absolute z-20 mt-2 w-[370px] rounded-2xl border bg-white dark:bg-gray-800 dark:border-gray-700 shadow-2xl p-4"
 				>
-					{/* header */}
 					<div className="flex items-center justify-between mb-3">
 						<button
 							type="button"
@@ -254,14 +251,12 @@ function DateRangePickerLite({
 						</button>
 					</div>
 
-					{/* weekdays */}
 					<div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
 						{["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
 							<div key={d}>{d}</div>
 						))}
 					</div>
 
-					{/* days */}
 					<div className="grid grid-cols-7 gap-1 text-center">
 						{grid.map((cell) =>
 							cell.date ? (
@@ -284,7 +279,6 @@ function DateRangePickerLite({
 						)}
 					</div>
 
-					{/* presets */}
 					<div className="mt-4 grid grid-cols-2 gap-2">
 						{presets.map((p) => (
 							<button
@@ -301,7 +295,6 @@ function DateRangePickerLite({
 						))}
 					</div>
 
-					{/* actions */}
 					<div className="mt-3 flex justify-end gap-2">
 						<button
 							type="button"
@@ -328,8 +321,6 @@ function DateRangePickerLite({
 		</div>
 	);
 }
-
-/* ───────────── Controls ───────────── */
 
 export function Controls(props: ControlsProps) {
 	const {

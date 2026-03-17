@@ -2,7 +2,6 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 
-/* dark-variant для v4 */
 @custom-variant dark (&:where(html.dark &));
 
 /* ── fonts ─────────────────────────────────────────────── */

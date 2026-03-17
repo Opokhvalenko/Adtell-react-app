@@ -150,12 +150,12 @@ export default function ArticlePage() {
 						rel="noopener noreferrer"
 						target="_blank"
 					>
-						Відкрити оригінал
+						Open original
 					</a>
 				)}
 				<div className="mt-4">
 					<Link to="/" className="underline">
-						← До стрічки
+						← Back to feed
 					</Link>
 				</div>
 			</div>
@@ -171,7 +171,7 @@ export default function ArticlePage() {
 
 			{url && (
 				<p className="mt-6">
-					Джерело:{" "}
+					Source:{" "}
 					<a
 						href={url}
 						className="underline"
@@ -185,7 +185,7 @@ export default function ArticlePage() {
 
 			<div className="mt-6">
 				<Link to="/" className="underline">
-					← До стрічки
+					← Back to feed
 				</Link>
 			</div>
 		</div>

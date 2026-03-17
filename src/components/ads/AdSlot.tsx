@@ -3,6 +3,7 @@ import { type HTMLAttributes, useEffect, useId, useMemo, useRef } from "react";
 import { ensureAdsModule, getAdsModule } from "@/lib/ads/window";
 import { resolveAdserverEndpoint } from "@/lib/adserver";
 import { cn } from "@/lib/cn";
+import { reportError } from "@/reporting/errors-lazy";
 import type { AdClient } from "@/types/a-client";
 
 type Runtime = {
@@ -91,9 +92,7 @@ function safeUnmount(domId: string) {
 	try {
 		const m = getAdsModule() as unknown as Runtime | undefined;
 		m?.unmount?.(domId);
-	} catch {
-		/* ignore */
-	}
+	} catch {}
 	document.getElementById(domId)?.replaceChildren();
 }
 
@@ -187,7 +186,7 @@ export default function AdSlot({
 					renderFallbackAd(el, domId);
 				}
 			} catch (e) {
-				console.error("[AdSlot] mount error:", e);
+				reportError(e, { where: "AdSlot:mount", domId });
 				renderFallbackAd(el, domId);
 			}
 
@@ -217,7 +216,7 @@ export default function AdSlot({
 						});
 						if (bid) mod.renderBidInto(el, bid, { endpoint: ep });
 					} catch (e) {
-						console.error("[AdSlot] fallback bid failed:", e);
+						reportError(e, { where: "AdSlot:fallbackBid", domId });
 					}
 				}
 			}, fallbackMs) as unknown as number;

@@ -22,19 +22,16 @@ export default function Layout() {
 
 	return (
 		<div className="min-h-screen flex flex-col gradient-bg transition-colors">
-			{/* Header */}
 			<header className="w-full">
 				<Header />
 			</header>
 
-			{/* Separator */}
 			<div className="py-2">
 				<div className="h-2 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
 				<div className="h-1 bg-gradient-to-r from-transparent via-teal-500/30 to-transparent" />
 				<div className="h-1 bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
 			</div>
 
-			{/* TOP banner — по центру, блок під розмір банера */}
 			<section className="w-full py-4">
 				<div className="container mx-auto max-w-screen-xl px-4">
 					<div className="grid grid-cols-12">
@@ -57,23 +54,19 @@ export default function Layout() {
 				</div>
 			</section>
 
-			{/* MAIN */}
 			<main className="flex-1 w-full">
 				<div className="container mx-auto max-w-screen-xxl px-4 py-8">
 					<div
 						className="grid grid-cols-1 lg:grid-cols-12 gap-4
 					"
 					>
-						{/* CONTENT */}
 						<section className="lg:col-span-8">
 							<div className="border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 p-6">
 								<Outlet />
 							</div>
 						</section>
 
-						{/* RIGHT sidebar */}
 						<aside className="lg:col-span-2 space-y-6">
-							{/* Bidmatic */}
 							<div className="border border-white/20 dark:border-gray-600/40 rounded-3xl shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/95 dark:bg-gray-700/95 p-3 inline-block">
 								<h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
 									<span className="text-base">📊</span>
@@ -88,7 +81,6 @@ export default function Layout() {
 								/>
 							</div>
 
-							{/* Custom */}
 							<div className="border border-white/20 dark:border-gray-600/40 rounded-3xl shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/95 dark:bg-gray-700/95 p-3 inline-block">
 								<h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
 									<span className="text-base">✨</span>
@@ -105,7 +97,6 @@ export default function Layout() {
 						</aside>
 					</div>
 
-					{/* MOBILE only ad under content */}
 					<div className="lg:hidden mt-8 flex justify-center">
 						<div className="border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 p-3 inline-block">
 							<h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
@@ -124,14 +115,12 @@ export default function Layout() {
 				</div>
 			</main>
 
-			{/* Separator */}
 			<div className="py-2">
 				<div className="h-2 bg-gradient-to-r from-transparent via-purple-500/40 to-transparent" />
 				<div className="h-1 bg-gradient-to-r from-transparent via-pink-500/30 to-transparent" />
 				<div className="h-1 bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
 			</div>
 
-			{/* Footer */}
 			<footer className="w-full">
 				<Footer />
 			</footer>

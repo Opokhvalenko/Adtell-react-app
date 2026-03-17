@@ -170,9 +170,7 @@ export default function AuctionStats() {
 						payload: { adUnitCode, adapter, bidder, cpm, currency },
 					});
 				}
-			} catch {
-				// ignore
-			}
+			} catch {}
 		}
 
 		const handlePrebidEvent = (event: CustomEvent<AuctionEvent>) => {

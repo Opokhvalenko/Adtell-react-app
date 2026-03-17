@@ -46,9 +46,7 @@ export async function ensureAdsModule(): Promise<AdsModule | undefined> {
 	try {
 		const mod = await import("virtual:ads-module");
 		await mod.initAds?.();
-	} catch {
-		// ignore
-	}
+	} catch {}
 
 	if (!window.__ads) {
 		window.__ads = { registry: {} };

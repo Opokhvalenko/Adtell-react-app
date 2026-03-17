@@ -8,7 +8,7 @@ export function ensureAdUid(): string {
 			window.__ads = { ...(window.__ads ?? {}), uid: existing };
 			return existing;
 		}
-		const uid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+		const uid = crypto.randomUUID();
 		localStorage.setItem(KEY, uid);
 		window.__ads = { ...(window.__ads ?? {}), uid };
 		return uid;
