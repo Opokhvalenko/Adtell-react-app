@@ -11,20 +11,24 @@ export default function CopyButton({
 	onCopied?: () => void;
 }) {
 	const [copied, setCopied] = useState(false);
+	const [failed, setFailed] = useState(false);
+
+	const handleCopy = async () => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopied(true);
+			setFailed(false);
+			onCopied?.();
+			setTimeout(() => setCopied(false), 1500);
+		} catch {
+			setFailed(true);
+			setTimeout(() => setFailed(false), 2000);
+		}
+	};
+
 	return (
-		<Button
-			className={className}
-			onClick={async () => {
-				try {
-					await navigator.clipboard.writeText(text);
-					setCopied(true);
-					onCopied?.();
-					setTimeout(() => setCopied(false), 1500);
-				} catch {}
-			}}
-			aria-live="polite"
-		>
-			{copied ? "Copied!" : "Copy"}
+		<Button className={className} onClick={handleCopy} aria-live="polite">
+			{failed ? "Failed to copy" : copied ? "Copied!" : "Copy"}
 		</Button>
 	);
 }

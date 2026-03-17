@@ -216,8 +216,8 @@ export default function AdSlot({
 							endpoint: ep,
 						});
 						if (bid) mod.renderBidInto(el, bid, { endpoint: ep });
-					} catch {
-						/* ignore */
+					} catch (e) {
+						console.error("[AdSlot] fallback bid failed:", e);
 					}
 				}
 			}, fallbackMs) as unknown as number;
