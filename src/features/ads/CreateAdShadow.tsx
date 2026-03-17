@@ -97,7 +97,6 @@ export default function CreateAdShadow() {
 
 	return (
 		<div className="max-w-6xl mx-auto p-6 space-y-6">
-			{/* Header */}
 			<header className="text-center py-6">
 				<div className="inline-flex items-center gap-4">
 					<div className="w-12 h-12 rounded-xl bg-emerald-600 text-white grid place-items-center shadow-sm">
@@ -114,7 +113,6 @@ export default function CreateAdShadow() {
 				</div>
 			</header>
 
-			{/* Frame card */}
 			<div className="relative rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden dark:border-zinc-700 dark:bg-zinc-900">
 				{loading && !broken && (
 					<div className="absolute inset-0 grid place-items-center">

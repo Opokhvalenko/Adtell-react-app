@@ -6,7 +6,6 @@ import type {
 } from "../analytics/events";
 import { report } from "../analytics/reporter";
 
-// ---- minimal pbjs typings ----
 type Size = [number, number];
 
 interface PbAdUnit {
@@ -76,7 +75,6 @@ function isPbjs(v: unknown): v is Required<Pick<Pbjs, "onEvent">> & Pbjs {
 	return !!v && typeof (v as Record<string, unknown>).onEvent === "function";
 }
 
-// ---- pickers ----
 const pickAuctionInit = (p: PbAuctionInit): AuctionInitData => ({
 	auctionId: String(p?.auctionId ?? ""),
 	adUnits: (p?.adUnits ?? []).map((u) => ({
@@ -114,7 +112,6 @@ const pickBidWon = (p: PbBidWon): BidWonData => ({
 	creativeId: p?.creativeId,
 });
 
-// ---- main ----
 export function attachPrebidAnalytics() {
 	const win = window as unknown as { pbjs?: Partial<Pbjs> };
 

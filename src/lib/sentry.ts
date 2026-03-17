@@ -1,6 +1,8 @@
 import * as Sentry from "@sentry/react";
 import { Replay } from "@sentry/replay";
 
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || "1.0.0";
+
 export function initSentry() {
 	if (
 		import.meta.env.MODE === "development" &&
@@ -29,7 +31,7 @@ export function initSentry() {
 			}
 			return event;
 		},
-		initialScope: { tags: { component: "frontend", version: "1.0.0" } },
+		initialScope: { tags: { component: "frontend", version: APP_VERSION } },
 	});
 
 	Sentry.setTag("service", "adtell-frontend");

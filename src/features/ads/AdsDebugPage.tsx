@@ -276,7 +276,7 @@ export default function AdsDebugPage() {
 			<ul className="rounded-2xl border border-zinc-200 bg-white/70 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/40 divide-y divide-zinc-200 dark:divide-zinc-700">
 				{filtered.length === 0 && (
 					<li className="p-4 text-sm text-zinc-600 dark:text-zinc-300">
-						Подій поки нема. У режимі GAM-only дивись події{" "}
+						No events yet. In GAM-only mode, check{" "}
 						<code className="px-1 rounded bg-zinc-200/60 dark:bg-zinc-700">
 							gpt:slotRenderEnded
 						</code>

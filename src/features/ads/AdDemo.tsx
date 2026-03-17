@@ -60,7 +60,6 @@ export default function AdDemo() {
 
 	return (
 		<div className="max-w-6xl mx-auto p-6 space-y-8">
-			{/* Header */}
 			<header className="text-center py-6">
 				<div className="inline-flex items-center gap-4">
 					<div className="w-12 h-12 rounded-xl bg-emerald-600 text-white grid place-items-center shadow-sm">
@@ -77,7 +76,6 @@ export default function AdDemo() {
 				</div>
 			</header>
 
-			{/* Actions */}
 			<div className="flex items-center justify-center gap-3">
 				<button
 					type="button"
@@ -97,10 +95,8 @@ export default function AdDemo() {
 				</button>
 			</div>
 
-			{/* Stats */}
 			<AuctionStats />
 
-			{/* Slots */}
 			<section className="space-y-4">
 				<h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 text-center">
 					Advertisement Slots
