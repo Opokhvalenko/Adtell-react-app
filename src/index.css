@@ -78,4 +78,6 @@ html.dark {
   .switch-thumb--on {
     @apply translate-x-3 bg-accent;
   }
+
 }
+

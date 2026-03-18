@@ -1,10 +1,8 @@
 import type { JSX } from "react";
 import { type HTMLAttributes, useEffect, useId, useMemo, useRef } from "react";
 import { ensureAdsModule, getAdsModule } from "@/lib/ads/window";
-import { resolveAdserverEndpoint } from "@/lib/adserver";
 import { cn } from "@/lib/cn";
 import { reportError } from "@/reporting/errors-lazy";
-import type { AdClient } from "@/types/a-client";
 
 type Runtime = {
 	uid?: string;
@@ -96,23 +94,12 @@ function safeUnmount(domId: string) {
 	document.getElementById(domId)?.replaceChildren();
 }
 
-async function waitForPbjs(timeout = 5000) {
-	const start = Date.now();
-	while (!(window as Window).pbjs && Date.now() - start <= timeout) {
-		// eslint-disable-next-line no-await-in-loop
-		await new Promise((r) => setTimeout(r, 30));
-	}
-}
-
 export default function AdSlot({
 	id,
 	className,
 	sizes = ["300x250"],
 	type = "inline",
-	geo,
-	floorCpm,
-	endpoint,
-	fallbackMs = 1800,
+	fallbackMs = 800,
 	placement = "inline",
 	disableBadge = false,
 }: AdSlotProps): JSX.Element {
@@ -150,74 +137,24 @@ export default function AdSlot({
 				if (maybe instanceof Promise) await maybe;
 
 				const adsModule = getAdsModule() as unknown as Runtime | undefined;
-				if (!adsModule) {
-					renderFallbackAd(el, domId);
-					return;
-				}
-
-				adsModule.registry ??= {};
-				const reg = adsModule.registry;
-				reg[domId] = {
-					sizes: sizes.map(toTuple),
-					type,
-				};
-
-				await waitForPbjs();
-
-				const best = (sizes[0] ?? "300x250") as SizeStr;
-				const ep = resolveAdserverEndpoint(endpoint);
-
-				if (adsModule.requestAndDisplay) {
-					const opts: RequestOpts = {
-						el,
-						size: best,
+				if (adsModule) {
+					adsModule.registry ??= {};
+					adsModule.registry[domId] = {
+						sizes: sizes.map(toTuple),
 						type,
-						geo,
-						uid: adsModule.uid ?? "",
-						floor: floorCpm,
-						endpoint: ep,
-						domId,
 					};
-					await adsModule.requestAndDisplay(opts);
-
-					await new Promise((r) => setTimeout(r, 0));
-					await adsModule.refreshAds?.([domId]);
-				} else {
-					renderFallbackAd(el, domId);
 				}
 			} catch (e) {
 				reportError(e, { where: "AdSlot:mount", domId });
-				renderFallbackAd(el, domId);
 			}
 
-			fallbackTimer = window.setTimeout(async () => {
+			// Wait for prebid.auction.js (initAds) to fill the container, show fallback if empty
+			fallbackTimer = window.setTimeout(() => {
 				const hasIframe = !!el.querySelector("iframe");
-				const hasHtml = !!el.innerHTML && el.innerHTML.trim().length > 0;
-				if (!hasIframe && !hasHtml) {
+				const hasImg = !!el.querySelector("img");
+				const hasContent = el.children.length > 1;
+				if (!hasIframe && !hasImg && !hasContent) {
 					renderFallbackAd(el, domId);
-					try {
-						const runtimePath = new URL(
-							"/modules/a.client.js",
-							window.location.origin,
-						).href;
-						const mod = (await import(
-							/* @vite-ignore */ runtimePath
-						)) as unknown as AdClient;
-						const best = (sizes[0] ?? "300x250") as SizeStr;
-						const ep = resolveAdserverEndpoint(endpoint);
-						const bid = await mod.requestBid({
-							size: best,
-							type,
-							geo,
-							uid:
-								(getAdsModule() as unknown as Runtime | undefined)?.uid ?? "",
-							floor: floorCpm,
-							endpoint: ep,
-						});
-						if (bid) mod.renderBidInto(el, bid, { endpoint: ep });
-					} catch (e) {
-						reportError(e, { where: "AdSlot:fallbackBid", domId });
-					}
 				}
 			}, fallbackMs) as unknown as number;
 		};
@@ -242,7 +179,7 @@ export default function AdSlot({
 			if (fallbackTimer) window.clearTimeout(fallbackTimer);
 			safeUnmount(domId);
 		};
-	}, [domId, sizes, type, geo, floorCpm, endpoint, fallbackMs]);
+	}, [domId, sizes, type, fallbackMs]);
 
 	return (
 		<section
