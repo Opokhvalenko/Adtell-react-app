@@ -29,7 +29,7 @@ const SIDE_SIZES = [
 	[300, 250],
 ];
 
-const BIDDER_TIMEOUT = 1200;
+const BIDDER_TIMEOUT = 500;
 const GPT_SAFE_FALLBACK_DELAY = 300;
 
 const BIDMATIC_ALLOWED = [
@@ -134,7 +134,7 @@ function injectStylesOnce() {
 				cmpVersion: 1,
 				eventStatus: "tcloaded",
 				cmpStatus: "loaded",
-				tcString: "COxxxxOxxxxOAAAAAENAAAAAAA",
+				tcString: "",
 			};
 			w.__tcfapi = (cmd, _ver, cb) => {
 				const callback = pickCb(cb);
@@ -259,6 +259,28 @@ function injectStylesOnce() {
 				} catch {}
 			};
 		}
+	} catch {}
+
+	// TCF v2 cross-frame protocol: sync.js in ad iframes uses postMessage
+	// to find CMP via __tcfapiLocator frame. Without this, "CMP not found".
+	try {
+		if (!w.frames.__tcfapiLocator) {
+			const locFrame = document.createElement("iframe");
+			locFrame.name = "__tcfapiLocator";
+			locFrame.style.display = "none";
+			document.head.appendChild(locFrame);
+		}
+		w.addEventListener("message", (event) => {
+			try {
+				const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+				if (!data?.__tcfapiCall) return;
+				const { command, version, callId } = data.__tcfapiCall;
+				w.__tcfapi?.(command, version, (result, success) => {
+					const msg = { __tcfapiReturn: { returnValue: result, success, callId } };
+					event.source?.postMessage(typeof event.data === "string" ? JSON.stringify(msg) : msg, "*");
+				});
+			} catch {}
+		});
 	} catch {}
 })();
 
@@ -413,66 +435,61 @@ async function ensurePrebid() {
 			_adtSpec = pickSpec(m, ["adtelligentBidAdapter"]);
 		} catch {}
 
+		function makeCreativeHtml(label, w0, h0, cpmBase) {
+			const themes = {
+				Adtelligent: {
+					bg: "linear-gradient(135deg, #059669, #047857)",
+					icon: "🎯",
+					tagline: "Smart Ad Delivery",
+				},
+				Bidmatic: {
+					bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+					icon: "📊",
+					tagline: "Programmatic Bidding",
+				},
+				Pokhvalenko: {
+					bg: "linear-gradient(135deg, #9333ea, #7c3aed)",
+					icon: "✨",
+					tagline: "Premium Creatives",
+				},
+			};
+			const t = themes[label] || {
+				bg: "linear-gradient(135deg, #4b5563, #374151)",
+				icon: "📢",
+				tagline: "Advertisement",
+			};
+			return `<div style="width:${w0}px;height:${h0}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:16px;background:${t.bg};font-family:system-ui,-apple-system,sans-serif;color:#fff;text-align:center;padding:16px;box-sizing:border-box"><span style="font-size:${w0 >= 728 ? 32 : 24}px">${t.icon}</span><span style="font-weight:800;font-size:${w0 >= 728 ? 20 : 14}px">${label}</span><span style="font-size:${w0 >= 728 ? 14 : 11}px;opacity:0.85">${t.tagline}</span><span style="font-size:10px;opacity:0.6;margin-top:4px">${w0}×${h0} · $${cpmBase.toFixed(2)} CPM</span></div>`;
+		}
+
 		const makeDemoBidder = (code, cpmBase, label) => ({
 			code,
 			supportedMediaTypes: ["banner"],
 			isBidRequestValid: () => true,
-			buildRequests: (bids) =>
-				bids.map((bid) => ({
-					method: "GET",
-					url: "about:blank",
-					data: {},
-					bid,
-				})),
+			buildRequests: (bids, _bidderRequest) => {
+				const serverResponses = bids.map((bid) => {
+					const sizes = bid.mediaTypes?.banner?.sizes || bid.sizes || [[300, 250]];
+					const [w0, h0] = sizes[0];
+					return {
+						body: {
+							requestId: bid.bidId,
+							cpm: Number((cpmBase + Math.random() * 0.01).toFixed(2)),
+							currency: "USD",
+							width: w0,
+							height: h0,
+							ad: makeCreativeHtml(label, w0, h0, cpmBase),
+							creativeId: `${code}-${Math.random().toString(36).slice(2)}`,
+							netRevenue: true,
+							ttl: 300,
+						},
+					};
+				});
+				return { method: "GET", url: "data:text/plain,", data: {}, _serverResponses: serverResponses, _bids: bids };
+			},
 			interpretResponse: (_resp, req) => {
-				const bid = req.bid;
-				const sizes = bid.mediaTypes?.banner?.sizes ||
-					bid.sizes || [[300, 250]];
-				const [w0, h0] = sizes[0];
-
-				const themes = {
-					Adtelligent: {
-						bg: "linear-gradient(135deg, #059669, #047857)",
-						icon: "🎯",
-						tagline: "Smart Ad Delivery",
-					},
-					Bidmatic: {
-						bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-						icon: "📊",
-						tagline: "Programmatic Bidding",
-					},
-					Pokhvalenko: {
-						bg: "linear-gradient(135deg, #9333ea, #7c3aed)",
-						icon: "✨",
-						tagline: "Premium Creatives",
-					},
-				};
-				const t = themes[label] || {
-					bg: "linear-gradient(135deg, #4b5563, #374151)",
-					icon: "📢",
-					tagline: "Advertisement",
-				};
-
-				const ad = `<div style="width:${w0}px;height:${h0}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
-     border-radius:16px;background:${t.bg};font-family:system-ui,-apple-system,sans-serif;color:#fff;text-align:center;padding:16px;box-sizing:border-box">
-     <span style="font-size:${w0 >= 728 ? 32 : 24}px">${t.icon}</span>
-     <span style="font-weight:800;font-size:${w0 >= 728 ? 20 : 14}px">${label}</span>
-     <span style="font-size:${w0 >= 728 ? 14 : 11}px;opacity:0.85">${t.tagline}</span>
-     <span style="font-size:10px;opacity:0.6;margin-top:4px">${w0}×${h0} · $${cpmBase.toFixed(2)} CPM</span>
-   </div>`;
-				return [
-					{
-						requestId: bid.bidId,
-						cpm: Number((cpmBase + Math.random() * 0.01).toFixed(2)),
-						currency: "USD",
-						width: w0,
-						height: h0,
-						ad,
-						creativeId: `${code}-${Math.random().toString(36).slice(2)}`,
-						netRevenue: true,
-						ttl: 60,
-					},
-				];
+				if (req._serverResponses) {
+					return req._serverResponses.map((r) => r.body);
+				}
+				return [];
 			},
 		});
 
@@ -975,7 +992,7 @@ async function waitBiddersReady() {
 	const t0 = performance.now();
 	while (
 		(window.__ads?.registeredBidders?.size || 0) < 1 &&
-		performance.now() - t0 < 1500
+		performance.now() - t0 < 500
 	) {
 		await new Promise((r) => window.pbjs.que.push(r));
 	}
