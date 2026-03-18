@@ -5,15 +5,21 @@ import AdSlot from "./ads/AdSlot";
 import Footer from "./Footer";
 import Header from "./Header";
 
-function AdCard({ icon, label, children }: { icon: string; label: string; children: ReactNode }) {
+function AdCard({
+	icon,
+	label,
+	children,
+}: {
+	icon: string;
+	label: string;
+	children: ReactNode;
+}) {
 	return (
 		<div className="border border-white/20 dark:border-gray-600/40 rounded-3xl shadow-2xl backdrop-blur-sm bg-white/95 dark:bg-gray-700/95 p-3 overflow-hidden">
 			<h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-1">
 				<span>{icon}</span> {label}
 			</h3>
-			<div className="overflow-hidden rounded-2xl">
-				{children}
-			</div>
+			<div className="overflow-hidden rounded-2xl">{children}</div>
 		</div>
 	);
 }
@@ -81,7 +87,10 @@ export default function Layout() {
 			</section>
 
 			<div className="flex-1 w-full">
-				<div className="mx-auto px-6 py-8" style={{ maxWidth: isXl ? 1700 : 1024 }}>
+				<div
+					className="mx-auto px-6 py-8"
+					style={{ maxWidth: isXl ? 1700 : 1024 }}
+				>
 					<div
 						style={{
 							display: "grid",
@@ -95,7 +104,11 @@ export default function Layout() {
 							<aside className="sticky top-24">
 								<AdCard icon="🎯" label="Adtelligent">
 									{/* biome-ignore lint/correctness/useUniqueElementIds: Prebid requires specific IDs */}
-									<AdSlot id="ad-left-adtelligent" sizes={["300x250"]} type="inline" />
+									<AdSlot
+										id="ad-left-adtelligent"
+										sizes={["300x250"]}
+										type="inline"
+									/>
 								</AdCard>
 							</aside>
 						)}
@@ -112,11 +125,19 @@ export default function Layout() {
 							<aside className="flex flex-col gap-4 sticky top-24">
 								<AdCard icon="📊" label="Bidmatic">
 									{/* biome-ignore lint/correctness/useUniqueElementIds: Prebid requires specific IDs */}
-									<AdSlot id="ad-right-bidmatic" sizes={["300x250"]} type="inline" />
+									<AdSlot
+										id="ad-right-bidmatic"
+										sizes={["300x250"]}
+										type="inline"
+									/>
 								</AdCard>
 								<AdCard icon="✨" label="Beautiful">
 									{/* biome-ignore lint/correctness/useUniqueElementIds: Prebid requires specific IDs */}
-									<AdSlot id="ad-right-beautiful" sizes={["300x250"]} type="inline" />
+									<AdSlot
+										id="ad-right-beautiful"
+										sizes={["300x250"]}
+										type="inline"
+									/>
 								</AdCard>
 							</aside>
 						)}
@@ -130,15 +151,27 @@ export default function Layout() {
 					<div className="mx-auto max-w-screen-lg flex flex-wrap justify-center gap-4">
 						<AdCard icon="🎯" label="Adtelligent">
 							{/* biome-ignore lint/correctness/useUniqueElementIds: Prebid requires specific IDs */}
-							<AdSlot id="ad-mobile-adtelligent" sizes={["300x250"]} type="inline" />
+							<AdSlot
+								id="ad-mobile-adtelligent"
+								sizes={["300x250"]}
+								type="inline"
+							/>
 						</AdCard>
 						<AdCard icon="📊" label="Bidmatic">
 							{/* biome-ignore lint/correctness/useUniqueElementIds: Prebid requires specific IDs */}
-							<AdSlot id="ad-mobile-bidmatic" sizes={["300x250"]} type="inline" />
+							<AdSlot
+								id="ad-mobile-bidmatic"
+								sizes={["300x250"]}
+								type="inline"
+							/>
 						</AdCard>
 						<AdCard icon="✨" label="Beautiful">
 							{/* biome-ignore lint/correctness/useUniqueElementIds: Prebid requires specific IDs */}
-							<AdSlot id="ad-mobile-beautiful" sizes={["300x250"]} type="inline" />
+							<AdSlot
+								id="ad-mobile-beautiful"
+								sizes={["300x250"]}
+								type="inline"
+							/>
 						</AdCard>
 					</div>
 				</div>

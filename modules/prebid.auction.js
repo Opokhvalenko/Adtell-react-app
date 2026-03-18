@@ -272,12 +272,18 @@ function injectStylesOnce() {
 		}
 		w.addEventListener("message", (event) => {
 			try {
-				const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+				const data =
+					typeof event.data === "string" ? JSON.parse(event.data) : event.data;
 				if (!data?.__tcfapiCall) return;
 				const { command, version, callId } = data.__tcfapiCall;
 				w.__tcfapi?.(command, version, (result, success) => {
-					const msg = { __tcfapiReturn: { returnValue: result, success, callId } };
-					event.source?.postMessage(typeof event.data === "string" ? JSON.stringify(msg) : msg, "*");
+					const msg = {
+						__tcfapiReturn: { returnValue: result, success, callId },
+					};
+					event.source?.postMessage(
+						typeof event.data === "string" ? JSON.stringify(msg) : msg,
+						"*",
+					);
 				});
 			} catch {}
 		});
@@ -467,7 +473,8 @@ async function ensurePrebid() {
 			isBidRequestValid: () => true,
 			buildRequests: (bids, _bidderRequest) => {
 				const serverResponses = bids.map((bid) => {
-					const sizes = bid.mediaTypes?.banner?.sizes || bid.sizes || [[300, 250]];
+					const sizes = bid.mediaTypes?.banner?.sizes ||
+						bid.sizes || [[300, 250]];
 					const [w0, h0] = sizes[0];
 					return {
 						body: {
@@ -483,7 +490,13 @@ async function ensurePrebid() {
 						},
 					};
 				});
-				return { method: "GET", url: "data:text/plain,", data: {}, _serverResponses: serverResponses, _bids: bids };
+				return {
+					method: "GET",
+					url: "data:text/plain,",
+					data: {},
+					_serverResponses: serverResponses,
+					_bids: bids,
+				};
 			},
 			interpretResponse: (_resp, req) => {
 				if (req._serverResponses) {
