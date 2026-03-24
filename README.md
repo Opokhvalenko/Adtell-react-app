@@ -4,15 +4,58 @@ A news application with a built-in programmatic advertising platform. Features r
 
 ## Demo
 
-[Live Demo](https://adtell-react-app.vercel.app/)
+[Live Demo](https://adtell-react-app.vercel.app/) | [API Docs](https://addtell-backend.onrender.com/docs) | [Backend Repo](https://github.com/Opokhvalenko/addtell-parser)
 
 > **Note:** Disable your ad blocker to see the ad auction system in action.
+> Backend is hosted on Render free tier — first request may take up to 5 minutes to wake up.
+
+### Test Credentials
+
+| Email | Password |
+|-------|----------|
+| john.doe@adtell.com | pass6834 |
 
 ## Screenshots
 
-![Feed page](screenshots/feed.png)
-![Ad auction debug](screenshots/auction-debug.png)
-![Stats dashboard](screenshots/stats.png)
+![News Feed — light theme](screenshots/feed-light.png)
+
+<details>
+<summary>More screenshots (9 total)</summary>
+
+### News Feed & Ad Auction
+
+| Page | Screenshot |
+|------|-----------|
+| Feed (light) | ![Feed light](screenshots/feed-light.png) |
+| Feed (dark) | ![Feed dark](screenshots/feed-dark.png) |
+| Ad Demo (light) | ![Ad Demo light](screenshots/ad-demo-light.png) |
+| Ad Demo (dark) | ![Ad Demo dark](screenshots/ad-demo-dark.png) |
+
+### Analytics & Debug
+
+| Page | Screenshot |
+|------|-----------|
+| Stats Dashboard (dark) | ![Stats](screenshots/stats-dark.png) |
+| Auction Debug (light) | ![Debug light](screenshots/debug-light.png) |
+| Auction Debug (dark) | ![Debug dark](screenshots/debug-dark.png) |
+
+### Auth & Validation
+
+| Page | Screenshot |
+|------|-----------|
+| Login | ![Login](screenshots/login.png) |
+| Login (validation errors) | ![Login validation](screenshots/login-validation.png) |
+| Register | ![Register](screenshots/register.png) |
+| Register (validation errors) | ![Register validation](screenshots/register-validation.png) |
+
+### Create Advertisement
+
+| Page | Screenshot |
+|------|-----------|
+| Create Ad (light) | ![Create Ad light](screenshots/create-ad-light.png) |
+| Create Ad (dark) | ![Create Ad dark](screenshots/create-ad-dark.png) |
+
+</details>
 
 ## Tech Stack
 
