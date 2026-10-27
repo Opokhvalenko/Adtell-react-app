@@ -16,11 +16,9 @@ vi.mock("react-router-dom", async () => {
 });
 
 const mockRegister = vi.fn();
-const mockLogin = vi.fn();
 const mockHydrate = vi.fn();
 vi.mock("@/lib/auth", () => ({
 	apiRegister: (...args: unknown[]) => mockRegister(...args),
-	apiLogin: (...args: unknown[]) => mockLogin(...args),
 }));
 
 vi.mock("@/store/auth", () => ({
@@ -35,14 +33,7 @@ function renderRegister() {
 	);
 }
 
-function fillForm(
-	name = "John Doe",
-	email = "john@example.com",
-	password = "secret123",
-) {
-	fireEvent.change(screen.getByLabelText(/^name$/i), {
-		target: { value: name },
-	});
+function fillForm(email = "john@example.com", password = "secret123") {
 	fireEvent.change(screen.getByLabelText(/email/i), {
 		target: { value: email },
 	});
@@ -55,7 +46,6 @@ function fillForm(
 beforeEach(() => {
 	mockNavigate.mockReset();
 	mockRegister.mockReset();
-	mockLogin.mockReset();
 	mockHydrate.mockReset();
 });
 
@@ -68,7 +58,7 @@ describe("RegisterForm integration", () => {
 		expect(
 			screen.getByRole("heading", { name: /sign up/i }),
 		).toBeInTheDocument();
-		expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
+		expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument();
 		expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
 		expect(screen.getAllByLabelText(/password/i)).toHaveLength(2);
 		expect(
@@ -82,13 +72,12 @@ describe("RegisterForm integration", () => {
 		fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
 		await waitFor(() => {
-			expect(screen.getByText(/name must be at least/i)).toBeInTheDocument();
+			expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument();
 		});
 	});
 
-	it("calls register → login → hydrate → navigate on success", async () => {
+	it("calls register → hydrate → navigate on success (no second login)", async () => {
 		mockRegister.mockResolvedValue({});
-		mockLogin.mockResolvedValue({});
 		mockHydrate.mockResolvedValue(undefined);
 
 		renderRegister();
@@ -103,7 +92,6 @@ describe("RegisterForm integration", () => {
 		});
 
 		await waitFor(() => {
-			expect(mockLogin).toHaveBeenCalledWith("john@example.com", "secret123");
 			expect(mockHydrate).toHaveBeenCalled();
 			expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
 		});
@@ -120,29 +108,16 @@ describe("RegisterForm integration", () => {
 			expect(screen.getByText("Email already exists")).toBeInTheDocument();
 		});
 
-		expect(mockLogin).not.toHaveBeenCalled();
-	});
-
-	it("redirects to login when auto-login fails after successful register", async () => {
-		mockRegister.mockResolvedValue({});
-		mockLogin.mockRejectedValue(new Error("Login failed"));
-
-		renderRegister();
-		fillForm();
-		fireEvent.click(screen.getByRole("button", { name: /create account/i }));
-
-		await waitFor(() => {
-			expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
-		});
+		expect(mockHydrate).not.toHaveBeenCalled();
+		expect(mockNavigate).not.toHaveBeenCalled();
 	});
 
 	it("trims email before sending", async () => {
 		mockRegister.mockResolvedValue({});
-		mockLogin.mockResolvedValue({});
 		mockHydrate.mockResolvedValue(undefined);
 
 		renderRegister();
-		fillForm("John", "  john@example.com  ", "secret123");
+		fillForm("  john@example.com  ", "secret123");
 		fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
 		await waitFor(() => {

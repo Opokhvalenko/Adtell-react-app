@@ -1,5 +1,6 @@
 import { ANALYTICS_STATS } from "@/config/analytics";
 import { API_BASE } from "@/lib/apiBase";
+import { apiFetch } from "@/lib/http";
 import { reportError } from "@/reporting/errors-lazy";
 import type { MetricKey, StatRow } from "./types";
 import { buildStatsFromPrebidLog } from "./utils/fromPrebidLog";
@@ -53,7 +54,7 @@ export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
 	const url = `${joinUrl(API_BASE, ANALYTICS_STATS)}?${params.toString()}`;
 
 	try {
-		const res = await fetch(url, { credentials: "include" });
+		const res = await apiFetch(url);
 		if (res.ok) {
 			const ct = res.headers.get("content-type") ?? "";
 			if (ct.includes("application/json")) {

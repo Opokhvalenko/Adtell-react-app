@@ -48,7 +48,7 @@ describe("LoginForm Component", () => {
 		await waitFor(() => {
 			expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument();
 			expect(
-				screen.getByText(/password must be at least 6 characters/i),
+				screen.getByText(/password must be at least 8 characters/i),
 			).toBeInTheDocument();
 		});
 	});

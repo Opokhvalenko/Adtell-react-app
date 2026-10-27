@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiLogin, apiRegister } from "@/lib/auth";
+import { apiRegister } from "@/lib/auth";
 import { toMessage } from "@/lib/httpError";
 import { useAuth } from "@/store/auth";
 import AuthForm from "./AuthForm";
@@ -20,7 +20,6 @@ export default function RegisterForm() {
 			submitting={pending}
 			error={err}
 			fields={[
-				{ name: "name", label: "Name", autoComplete: "name" },
 				{ name: "email", label: "Email", type: "email", autoComplete: "email" },
 				{
 					name: "password",
@@ -45,15 +44,10 @@ export default function RegisterForm() {
 					setPending(false);
 					return;
 				}
-				try {
-					await apiLogin(values.email.trim(), values.password);
-					await hydrate();
-					navigate("/", { replace: true });
-				} catch {
-					navigate("/login", { replace: true });
-				} finally {
-					setPending(false);
-				}
+				// Registration already starts the session (cookies), no separate login needed
+				await hydrate();
+				setPending(false);
+				navigate("/", { replace: true });
 			}}
 		/>
 	);

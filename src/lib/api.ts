@@ -1,4 +1,5 @@
 import { API_BASE } from "./apiBase";
+import { apiFetch } from "./http";
 
 export interface FeedItem {
 	id: string;
@@ -26,7 +27,7 @@ interface ApiFeedResponse {
 }
 
 export async function fetchFeed(): Promise<FeedResponse> {
-	const res = await fetch(`${API_BASE}/feed`, { credentials: "include" });
+	const res = await apiFetch(`${API_BASE}/feed`);
 	if (!res.ok) throw new Error(await res.text());
 
 	const raw = (await res.json()) as ApiFeedResponse;
@@ -44,11 +45,8 @@ export async function fetchFeed(): Promise<FeedResponse> {
 export async function fetchArticleByUrl(
 	url: string,
 ): Promise<{ url: string; title?: string; html: string }> {
-	const res = await fetch(
+	const res = await apiFetch(
 		`${API_BASE}/article?url=${encodeURIComponent(url)}`,
-		{
-			credentials: "include",
-		},
 	);
 	if (!res.ok) throw new Error(await res.text());
 	return (await res.json()) as { url: string; title?: string; html: string };
