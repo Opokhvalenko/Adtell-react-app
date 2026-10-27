@@ -1,96 +1,42 @@
+import { apiLogout, fetchMe } from "../lib/auth";
+import { safeLocalStorage } from "../lib/safe-storage";
 import { createStore } from "../lib/zustand";
 
-const API_URL = import.meta.env.DEV
-	? ""
-	: (
-			(import.meta.env.VITE_API_URL as string | undefined) ||
-			"http://127.0.0.1:3000"
-		).replace(/\/$/, "");
-
-type Credentials = { email: string; password: string };
+/** Older builds persisted the whole auth store, including a session token, under this key. */
+const LEGACY_PERSIST_KEY = "auth";
+safeLocalStorage.removeItem(LEGACY_PERSIST_KEY);
 
 type AuthState = {
 	isLoggedIn: boolean;
 	isLoading: boolean;
-	token: string | null;
 	hydrate: () => Promise<void>;
-	login: (creds: Credentials) => Promise<void>;
-	register: (creds: Credentials) => Promise<void>;
 	logout: () => Promise<void>;
 };
 
+/**
+ * Only UI state: the session itself is in httpOnly cookies, so nothing here is persisted and no
+ * token is ever readable by JavaScript.
+ */
 export const useAuth = createStore<AuthState>(
 	"auth",
 	(set) => ({
 		isLoggedIn: false,
 		isLoading: true,
-		token: null,
 
 		hydrate: async () => {
 			try {
-				const res = await fetch(`${API_URL}/api/auth/me`, {
-					credentials: "include",
-				});
-				if (res.ok) {
-					const user = await res.json();
-					set({ isLoggedIn: true, token: user.token || null });
-				} else {
-					set({ isLoggedIn: false, token: null });
-				}
+				set({ isLoggedIn: (await fetchMe()) !== null });
 			} catch {
-				set({ isLoggedIn: false, token: null });
+				set({ isLoggedIn: false });
 			} finally {
 				set({ isLoading: false });
 			}
 		},
 
-		login: async (creds) => {
-			const r = await fetch(`${API_URL}/api/auth/login`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify(creds),
-			});
-			if (!r.ok) throw new Error(await r.text());
-
-			const me = await fetch(`${API_URL}/api/auth/me`, {
-				credentials: "include",
-			});
-			if (me.ok) {
-				const user = await me.json();
-				set({ isLoggedIn: true, token: user.token || null, isLoading: false });
-			} else {
-				set({ isLoggedIn: false, token: null, isLoading: false });
-			}
-		},
-
-		register: async (creds) => {
-			const r = await fetch(`${API_URL}/api/auth/register`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify(creds),
-			});
-			if (!r.ok) throw new Error(await r.text());
-
-			const me = await fetch(`${API_URL}/api/auth/me`, {
-				credentials: "include",
-			});
-			if (me.ok) {
-				const user = await me.json();
-				set({ isLoggedIn: true, token: user.token || null, isLoading: false });
-			} else {
-				set({ isLoggedIn: false, token: null, isLoading: false });
-			}
-		},
-
 		logout: async () => {
-			await fetch(`${API_URL}/api/auth/logout`, {
-				method: "POST",
-				credentials: "include",
-			}).catch(() => {});
-			set({ isLoggedIn: false, token: null });
+			await apiLogout().catch(() => {});
+			set({ isLoggedIn: false });
 		},
 	}),
-	{ label: "auth" },
+	{ label: "auth", persist: false },
 );

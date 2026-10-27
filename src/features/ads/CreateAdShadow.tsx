@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { API_ORIGIN } from "@/lib/apiBase";
 
-const src = import.meta.env.DEV
-	? "/create-lineitem"
-	: `${API_ORIGIN}/create-lineitem`;
+/** Same origin in production too (Vercel rewrite), so the page gets the session cookie. */
+const src = `${API_ORIGIN}/create-lineitem`;
 
 type Msg =
 	| { type: "resize"; height: number }

@@ -37,17 +37,25 @@ describe("LoginSchema", () => {
 		expect(result.success).toBe(false);
 	});
 
-	it("rejects short password", () => {
+	it("rejects a password shorter than the backend minimum (8)", () => {
 		const result = LoginSchema.safeParse({
 			email: "user@example.com",
-			password: "12345",
+			password: "1234567",
 		});
 		expect(result.success).toBe(false);
 		if (!result.success) {
 			expect(result.error.issues[0].message).toBe(
-				"Password must be at least 6 characters",
+				"Password must be at least 8 characters",
 			);
 		}
+	});
+
+	it("rejects a password longer than the backend maximum (128)", () => {
+		const result = LoginSchema.safeParse({
+			email: "user@example.com",
+			password: "x".repeat(129),
+		});
+		expect(result.success).toBe(false);
 	});
 
 	it("rejects empty password", () => {
@@ -61,7 +69,6 @@ describe("LoginSchema", () => {
 
 describe("RegisterSchema", () => {
 	const valid = {
-		name: "John",
 		email: "john@example.com",
 		password: "secret123",
 		confirmPassword: "secret123",
@@ -70,24 +77,6 @@ describe("RegisterSchema", () => {
 	it("accepts valid registration data", () => {
 		const result = RegisterSchema.safeParse(valid);
 		expect(result.success).toBe(true);
-	});
-
-	it("rejects short name", () => {
-		const result = RegisterSchema.safeParse({ ...valid, name: "J" });
-		expect(result.success).toBe(false);
-		if (!result.success) {
-			expect(result.error.issues[0].message).toBe(
-				"Name must be at least 2 characters",
-			);
-		}
-	});
-
-	it("trims name whitespace", () => {
-		const result = RegisterSchema.safeParse({ ...valid, name: "  Jo  " });
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.name).toBe("Jo");
-		}
 	});
 
 	it("rejects mismatched passwords", () => {
