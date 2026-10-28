@@ -7,6 +7,10 @@ import {
 	GAM_NETWORK_CALLS,
 } from "virtual:ads-config";
 import { composeAdsCss } from "/modules/ads.styles.js";
+import {
+	fetchDirectSoldForSlots,
+	OWN_AD_SERVER,
+} from "/modules/ownAdServer.js";
 
 /* ───────────────────────── config & constants ─────────────────────────── */
 
@@ -837,21 +841,66 @@ function getBidsForCode(code) {
 	}
 }
 
-function chooseWinners(adUnitCodes) {
+export { OWN_AD_SERVER };
+
+/**
+ * Slots that still need an ad after the first pass. A direct-sold winner in one slot must not
+ * end the auction for the others: their programmatic bids often arrive a moment later.
+ */
+export function slotsWithoutWinner(codes, winners) {
+	return codes.filter((code) => !winners.some((wb) => wb.adUnitCode === code));
+}
+
+/**
+ * Winner of one slot: a line item sold through our own ad server always wins (it is a real
+ * order), then the slot's preferred demo bidder, then Adtelligent, then the highest CPM.
+ */
+export function pickWinner(bids, preferred) {
+	const byBidder = (name) =>
+		bids.find((b) => String(b.bidderCode || b.bidder) === String(name));
+	return (
+		byBidder(OWN_AD_SERVER) ||
+		(preferred && byBidder(preferred)) ||
+		byBidder("adtelligent") ||
+		bids.reduce((acc, b) => (!acc || b.cpm > acc.cpm ? b : acc), null)
+	);
+}
+
+/** Asks our own ad server for a line item per slot, in the size that fits the container. */
+function lookupDirectSold(units) {
+	return fetchDirectSoldForSlots(
+		units.map((u) => {
+			const sizes = u.mediaTypes?.banner?.sizes || [[300, 250]];
+			const width = document
+				.getElementById(u.code)
+				?.getBoundingClientRect().width;
+			return [u.code, pickBestSize(width || sizes[0][0], sizes)];
+		}),
+	);
+}
+
+/** Bids per slot, read right away: once the handler awaits, Prebid may start the next auction. */
+function snapshotBids(adUnitCodes) {
+	return new Map(adUnitCodes.map((code) => [code, getBidsForCode(code)]));
+}
+
+/**
+ * @param {Map<string, object>} [directSold] own ad server winners per slot code
+ * @param {Map<string, object[]>} [bidsByCode] bids captured before any await
+ */
+function chooseWinners(
+	adUnitCodes,
+	directSold = new Map(),
+	bidsByCode = snapshotBids(adUnitCodes),
+) {
 	const winners = [];
 	for (const code of adUnitCodes) {
-		const bids = getBidsForCode(code);
+		const direct = directSold.get(code);
+		const programmatic = bidsByCode.get(code) || [];
+		const bids = direct ? [...programmatic, direct] : programmatic;
 		if (!bids.length) continue;
 
-		const prefer = preferredBidderFor(code);
-		const byBidder = (name) =>
-			bids.find((b) => String(b.bidderCode || b.bidder) === String(name));
-
-		let pick = prefer ? byBidder(prefer) : null;
-		if (!pick) pick = byBidder("adtelligent");
-		if (!pick)
-			pick = bids.reduce((acc, b) => (!acc || b.cpm > acc.cpm ? b : acc), null);
-
+		const pick = pickWinner(bids, preferredBidderFor(code));
 		if (pick) winners.push(pick);
 	}
 	return winners;
@@ -1036,6 +1085,7 @@ export async function requestAndDisplay(adUnits) {
 
 	w.__lastCodes = codes.slice();
 
+	const directSold = lookupDirectSold(units);
 	const unitSizesByCode = Object.fromEntries(
 		units.map((u) => [u.code, u.mediaTypes?.banner?.sizes || [[300, 250]]]),
 	);
@@ -1050,8 +1100,11 @@ export async function requestAndDisplay(adUnits) {
 		w.pbjs.requestBids?.({
 			adUnitCodes: codes,
 			timeout: BIDDER_TIMEOUT,
-			bidsBackHandler: () => {
-				const winners = chooseWinners(codes);
+			bidsBackHandler: async () => {
+				const bidsByCode = snapshotBids(codes);
+				const winners = chooseWinners(codes, await directSold, bidsByCode);
+				// Slots still without a winner (programmatic bids often arrive a moment later)
+				const pending = slotsWithoutWinner(codes, winners);
 
 				if (winners.length) {
 					logEvent("hb:bidsBackHandler", { codes, winners });
@@ -1072,13 +1125,16 @@ export async function requestAndDisplay(adUnits) {
 						_auctionInFlight = false;
 						w.__ads.lastAuctionAt = Date.now();
 					}
-					return;
+					if (!pending.length) return;
 				}
 
-				setTimeout(() => {
-					const late = chooseWinners(codes);
+				setTimeout(async () => {
+					const late = chooseWinners(pending, await directSold);
 					if (late.length) {
-						logEvent("hb:bidsBackHandler:late", { codes, winners: late });
+						logEvent("hb:bidsBackHandler:late", {
+							codes: pending,
+							winners: late,
+						});
 						for (const wb of late) {
 							renderDirect(wb);
 						}
@@ -1087,7 +1143,7 @@ export async function requestAndDisplay(adUnits) {
 						return;
 					}
 
-					codes.forEach((code) => {
+					pending.forEach((code) => {
 						const adtBids = getBidsForCode(code).filter(
 							(b) => String(b.bidderCode) === "adtelligent",
 						);
@@ -1101,7 +1157,7 @@ export async function requestAndDisplay(adUnits) {
 						const best = pickBestSize(width, unitSizes);
 						renderHouse(code, best);
 					});
-					logEvent("hb:bidsBackHandler:none", { adUnitCodes: codes });
+					logEvent("hb:bidsBackHandler:none", { adUnitCodes: pending });
 					_auctionInFlight = false;
 					w.__ads.lastAuctionAt = Date.now();
 				}, 250);
@@ -1124,6 +1180,7 @@ export async function refreshAds(codes) {
 
 	resetRenderFlags(adUnitCodes);
 
+	const directSold = lookupDirectSold(units);
 	const unitSizesByCode = Object.fromEntries(
 		units.map((u) => [u.code, u.mediaTypes?.banner?.sizes || [[300, 250]]]),
 	);
@@ -1137,8 +1194,15 @@ export async function refreshAds(codes) {
 		w.pbjs.requestBids?.({
 			adUnitCodes,
 			timeout: BIDDER_TIMEOUT,
-			bidsBackHandler: () => {
-				const winners = chooseWinners(adUnitCodes);
+			bidsBackHandler: async () => {
+				const bidsByCode = snapshotBids(adUnitCodes);
+				const winners = chooseWinners(
+					adUnitCodes,
+					await directSold,
+					bidsByCode,
+				);
+				// Slots still without a winner (programmatic bids often arrive a moment later)
+				const pending = slotsWithoutWinner(adUnitCodes, winners);
 
 				if (winners.length) {
 					logEvent("hb:bidsBackHandler", { adUnitCodes, winners });
@@ -1157,11 +1221,11 @@ export async function refreshAds(codes) {
 						}
 						w.__ads.lastAuctionAt = Date.now();
 					}
-					return;
+					if (!pending.length) return;
 				}
 
-				setTimeout(() => {
-					const late = chooseWinners(adUnitCodes);
+				setTimeout(async () => {
+					const late = chooseWinners(pending, await directSold);
 					if (late.length) {
 						const seen2 = new Set();
 						const uniq = late.filter((wb) => {
@@ -1171,7 +1235,10 @@ export async function refreshAds(codes) {
 							seen2.add(id);
 							return true;
 						});
-						logEvent("hb:bidsBackHandler:late", { adUnitCodes, winners: uniq });
+						logEvent("hb:bidsBackHandler:late", {
+							adUnitCodes: pending,
+							winners: uniq,
+						});
 						for (const wb of uniq) {
 							renderDirect(wb);
 						}
@@ -1179,7 +1246,7 @@ export async function refreshAds(codes) {
 						return;
 					}
 
-					adUnitCodes.forEach((code) => {
+					pending.forEach((code) => {
 						const adtBids = getBidsForCode(code).filter(
 							(b) => String(b.bidderCode) === "adtelligent",
 						);
@@ -1193,7 +1260,7 @@ export async function refreshAds(codes) {
 						const best = pickBestSize(width, unitSizes);
 						renderHouse(code, best);
 					});
-					logEvent("hb:bidsBackHandler:none", { adUnitCodes });
+					logEvent("hb:bidsBackHandler:none", { adUnitCodes: pending });
 					w.__ads.lastAuctionAt = Date.now();
 				}, 250);
 			},
