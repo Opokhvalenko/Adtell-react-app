@@ -140,6 +140,9 @@ export default function CreateAdShadow() {
 					title="Create Line Item"
 					className="block w-full"
 					style={{ height: "1200px", border: 0 }}
+					// Our own server-rendered form: it needs same-origin for the session cookie. The
+					// user's untrusted creative HTML is previewed inside it in a separate iframe whose
+					// sandbox has no allow-same-origin, and the API sanitizes it before storing.
 					sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
 					referrerPolicy="strict-origin-when-cross-origin"
 					allow="clipboard-read; clipboard-write"

@@ -31,21 +31,14 @@ export const spec = {
 		return !!(bid?.code || bid?.adUnitCode);
 	},
 
-	buildRequests(validBidRequests, bidderRequest) {
+	buildRequests(validBidRequests, _bidderRequest) {
 		return validBidRequests.map((bid) => {
 			const [width, height] = pickSizeFromBid(bid);
-			const offline = genHouse(adUnitCodeOf(bid), width, height);
-			const query = toQuery({
-				adUnitCode: adUnitCodeOf(bid),
-				width,
-				height,
-				bidId: bid.bidId,
-				auctionId: bidderRequest?.auctionId,
-				offline,
-			});
+			// GET /api/bid accepts only these parameters (additionalProperties: false)
+			const query = toQuery({ size: `${width}x${height}`, type: "banner" });
 			return {
 				method: "GET",
-				url: `${location.origin}/api/adserver/bid?${query}`,
+				url: `${location.origin}/api/bid?${query}`,
 				bidRequest: bid,
 			};
 		});
@@ -82,7 +75,7 @@ export const spec = {
 				height: Number(body.h || h),
 				ad: body.adm,
 				ttl: Number(body.ttl || 300),
-				creativeId: String(body.creativeId || `house_${Date.now()}`),
+				creativeId: String(body.lineItemId || `house_${Date.now()}`),
 				netRevenue: true,
 				currency: String(body.cur || "USD"),
 				meta: {
