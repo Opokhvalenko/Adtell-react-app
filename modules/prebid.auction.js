@@ -887,55 +887,46 @@ function renderDirect(winner) {
 		el.innerHTML = "";
 	} catch {}
 
-	const ifr = document.createElement("iframe");
-	ifr.setAttribute("scrolling", "no");
-	ifr.setAttribute("frameborder", "0");
-	ifr.style.cssText =
-		"display:block;border:0;width:100%;height:100%;overflow:hidden;border-radius:12px";
-	el.appendChild(ifr);
-
-	const writeRaw = () => {
-		try {
-			const doc = ifr.contentDocument || ifr.contentWindow?.document;
-			if (!doc) return;
-			doc.open();
-			doc.write(String(winner.ad || ""));
-			doc.close();
-		} catch (e) {
-			console.warn("[Prebid] writeRaw error:", e);
-		}
-	};
-
-	try {
-		const doc = ifr.contentWindow?.document || null;
-		if (w.pbjs?.renderAd && winner.adId && doc) {
-			try {
-				w.pbjs.renderAd(doc, winner.adId);
-			} catch (_e) {
-				if (winner.ad) writeRaw();
-			}
-		} else if (winner.ad) {
-			writeRaw();
-		}
-	} catch (e) {
-		console.warn("[Prebid] renderAd error, fallback to raw HTML:", e);
-		if (winner.ad) writeRaw();
+	// No markup and no ad URL: show the house creative instead of an empty frame
+	if (!winner.ad && !winner.adUrl) {
+		renderHouse(id, [W, H]);
+		return;
 	}
 
-	setTimeout(() => {
-		try {
-			const body = ifr.contentDocument?.body;
-			const empty =
-				!body ||
-				body.childNodes.length === 0 ||
-				body.innerHTML.trim().length === 0;
-			if (empty && winner.ad) writeRaw();
-			w.__ads.rendered[id] = true;
-			if (winner.adId) w.__ads.renderedByAdId.add(winner.adId);
-		} catch {
-			renderHouse(id, [W, H]);
-		}
-	}, 60);
+	el.appendChild(createAdFrame(winner, W, H));
+	w.__ads.rendered[id] = true;
+	if (winner.adId) w.__ads.renderedByAdId.add(winner.adId);
+}
+
+/**
+ * Bid markup comes from third parties (and from any registered user via the own ad server),
+ * so it runs in a sandboxed iframe WITHOUT `allow-same-origin`: its scripts get an opaque
+ * origin and cannot read this page, its cookies or localStorage. Clicks may open new tabs.
+ * An iframe filled with document.write would share the page's origin instead.
+ */
+const AD_SANDBOX = [
+	"allow-scripts",
+	"allow-popups",
+	"allow-popups-to-escape-sandbox",
+	"allow-top-navigation-by-user-activation",
+].join(" ");
+
+export function createAdFrame(winner, width, height) {
+	const ifr = document.createElement("iframe");
+	ifr.setAttribute("sandbox", AD_SANDBOX);
+	ifr.setAttribute("scrolling", "no");
+	ifr.setAttribute("frameborder", "0");
+	ifr.setAttribute("referrerpolicy", "no-referrer");
+	ifr.width = String(width);
+	ifr.height = String(height);
+	ifr.style.cssText =
+		"display:block;border:0;width:100%;height:100%;overflow:hidden;border-radius:12px";
+	if (winner.ad) {
+		ifr.srcdoc = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:hidden}</style>${String(winner.ad)}`;
+	} else if (winner.adUrl) {
+		ifr.src = String(winner.adUrl);
+	}
+	return ifr;
 }
 
 /* ───────────────────────────── public API ──────────────────────────────── */
