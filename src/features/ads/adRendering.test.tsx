@@ -1,7 +1,12 @@
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { spec } from "../../../modules/customBidAdapter.js";
-import { createAdFrame } from "../../../modules/prebid.auction.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fetchDirectSold } from "../../../modules/ownAdServer.js";
+import {
+	createAdFrame,
+	OWN_AD_SERVER,
+	pickWinner,
+	slotsWithoutWinner,
+} from "../../../modules/prebid.auction.js";
 import { renderSafeHtml } from "../news/renderSafeHtml";
 
 const MARKUP = "<script>parent.document.title='pwned'</script><b>ad</b>";
@@ -30,36 +35,99 @@ describe("createAdFrame (third-party bid markup)", () => {
 	});
 });
 
-describe("customAdServer bid adapter contract", () => {
-	const bid = {
-		bidId: "b1",
-		adUnitCode: "slot-1",
-		mediaTypes: { banner: { sizes: [[300, 250]] } },
-	};
+describe("own ad server (direct-sold line items)", () => {
+	const mockFetch = vi.fn();
+	beforeEach(() => {
+		mockFetch.mockReset();
+		vi.stubGlobal("fetch", mockFetch);
+	});
+	afterEach(() => vi.unstubAllGlobals());
 
-	it("calls the existing /api/bid route with only the parameters it accepts", () => {
-		const [request] = spec.buildRequests([bid], { auctionId: "a1" });
-		const url = new URL(request.url);
-		expect(url.pathname).toBe("/api/bid");
-		expect(Object.fromEntries(url.searchParams)).toEqual({
-			size: "300x250",
-			type: "banner",
+	const response = (status: number, body?: unknown) =>
+		Promise.resolve({
+			ok: status < 400,
+			status,
+			json: () => Promise.resolve(body),
+		});
+
+	it("asks the existing /api/bid on the site's own origin with only the accepted parameters", async () => {
+		mockFetch.mockReturnValueOnce(response(204));
+		await fetchDirectSold("slot-1", [300, 250]);
+		const [url, init] = mockFetch.mock.calls[0];
+		expect(url).toBe("/api/bid?size=300x250&type=banner");
+		expect(init.credentials).toBe("same-origin");
+	});
+
+	it("no line item for the size (204) → no direct-sold ad", async () => {
+		mockFetch.mockReturnValueOnce(response(204));
+		expect(await fetchDirectSold("slot-1", [300, 250])).toBeNull();
+	});
+
+	it("a line item becomes a renderable winner for the slot", async () => {
+		mockFetch.mockReturnValueOnce(
+			response(200, {
+				lineItemId: "li-1",
+				cpm: 9,
+				w: 300,
+				h: 250,
+				adm: "<b>own</b>",
+			}),
+		);
+		expect(await fetchDirectSold("slot-1", [300, 250])).toMatchObject({
+			adUnitCode: "slot-1",
+			bidderCode: OWN_AD_SERVER,
+			ad: "<b>own</b>",
+			creativeId: "li-1",
 		});
 	});
 
-	it("maps the server response (lineItemId, adm) into a Prebid bid", () => {
-		const [request] = spec.buildRequests([bid], { auctionId: "a1" });
-		const [result] = spec.interpretResponse(
-			{
-				body: { lineItemId: "li-1", cpm: 1.5, w: 300, h: 250, adm: "<b>x</b>" },
-			},
-			request,
+	it("an ad server failure never breaks the auction", async () => {
+		mockFetch.mockRejectedValueOnce(new Error("offline"));
+		expect(await fetchDirectSold("slot-1", [300, 250])).toBeNull();
+	});
+});
+
+describe("winner selection", () => {
+	it("a direct-sold line item wins over programmatic bids, even with a lower CPM", () => {
+		const bids = [
+			{ bidderCode: "adtelligent", cpm: 2.7 },
+			{ bidderCode: "bidmatic_local", cpm: 3.1 },
+			{ bidderCode: OWN_AD_SERVER, cpm: 1.2 },
+		];
+		expect(pickWinner(bids, "bidmatic_local")?.bidderCode).toBe(OWN_AD_SERVER);
+	});
+
+	it("without it: the slot's preferred bidder, then Adtelligent, then the best CPM", () => {
+		const bids = [
+			{ bidderCode: "adtelligent", cpm: 2.7 },
+			{ bidderCode: "bidmatic_local", cpm: 3.1 },
+		];
+		expect(pickWinner(bids, "bidmatic_local")?.bidderCode).toBe(
+			"bidmatic_local",
 		);
-		expect(result).toMatchObject({
-			creativeId: "li-1",
-			cpm: 1.5,
-			ad: "<b>x</b>",
-		});
+		expect(pickWinner(bids, null)?.bidderCode).toBe("adtelligent");
+		expect(
+			pickWinner(
+				[
+					{ bidderCode: "x", cpm: 1 },
+					{ bidderCode: "y", cpm: 2 },
+				],
+				null,
+			)?.bidderCode,
+		).toBe("y");
+	});
+});
+
+describe("slotsWithoutWinner", () => {
+	it("a direct-sold ad in one slot leaves the other slots waiting for late bids", () => {
+		const winners = [{ adUnitCode: "ad-mobile", bidderCode: OWN_AD_SERVER }];
+		expect(slotsWithoutWinner(["ad-top", "ad-mobile"], winners)).toEqual([
+			"ad-top",
+		]);
+	});
+	it("nothing is pending once every slot has a winner", () => {
+		const winners = [{ adUnitCode: "a" }, { adUnitCode: "b" }];
+		expect(slotsWithoutWinner(["a", "b"], winners)).toEqual([]);
 	});
 });
 
