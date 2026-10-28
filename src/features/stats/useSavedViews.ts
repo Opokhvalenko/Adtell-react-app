@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { safeLocalStorage } from "@/lib/safe-storage";
-import type { MetricKey } from "./types";
+import { isMetricKey, type MetricKey } from "./types";
 
 export interface SavedView {
 	name: string;
@@ -10,12 +10,21 @@ export interface SavedView {
 
 const LS_KEY = "stats_views";
 
+/** Views are stored in the browser: keep only well-formed ones and metrics the server knows. */
+function toView(value: unknown): SavedView[] {
+	if (!value || typeof value !== "object") return [];
+	const v = value as Partial<Record<keyof SavedView, unknown>>;
+	if (typeof v.name !== "string" || typeof v.groupBy !== "string") return [];
+	const metrics = Array.isArray(v.metrics) ? v.metrics.filter(isMetricKey) : [];
+	return [{ name: v.name, groupBy: v.groupBy, metrics }];
+}
+
 function readViews(): SavedView[] {
 	try {
 		const raw = safeLocalStorage.getItem(LS_KEY);
 		if (!raw) return [];
-		const arr = JSON.parse(raw) as SavedView[];
-		return Array.isArray(arr) ? arr : [];
+		const parsed: unknown = JSON.parse(raw);
+		return Array.isArray(parsed) ? parsed.flatMap(toView) : [];
 	} catch {
 		return [];
 	}

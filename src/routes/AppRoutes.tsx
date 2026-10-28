@@ -1,3 +1,4 @@
+import { ADS_DEBUG } from "virtual:ads-config";
 import { lazy, type ReactElement, Suspense, useEffect } from "react";
 import {
 	createBrowserRouter,
@@ -7,7 +8,6 @@ import {
 	useLocation,
 	useRouteError,
 } from "react-router-dom";
-
 import Layout from "@/components/Layout";
 import Loader from "@/components/Loader";
 import StatsPage from "@/features/stats/StatsPage";
@@ -18,11 +18,12 @@ const ArticlePage = lazy(() => import("@/features/news/ArticlePage"));
 const NewsModal = lazy(() => import("@/features/news/NewsModal"));
 const LoginForm = lazy(() => import("@/features/auth/LoginForm"));
 const RegisterForm = lazy(() => import("@/features/auth/RegisterForm"));
-const AdsDebugPage = lazy(() => import("@/features/ads/AdsDebugPage"));
+// Development builds only: the constant is false in production, so the chunk is not even built
+const AdsDebugPage = ADS_DEBUG
+	? lazy(() => import("@/features/ads/AdsDebugPage"))
+	: () => null;
 const CreateAdShadow = lazy(() => import("@/features/ads/CreateAdShadow"));
 const AdDemo = lazy(() => import("@/features/ads/AdDemo"));
-
-const ADS_DEBUG = import.meta.env.VITE_ADS_DEBUG === "true";
 
 function RequireAuth({ children }: { children: ReactElement }) {
 	const { isLoggedIn, isLoading } = useAuth();
