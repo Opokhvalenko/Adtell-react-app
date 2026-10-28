@@ -102,12 +102,13 @@ src/
 └── types/             # TypeScript definitions, virtual module types
 
 modules/               # External ad modules (loaded at runtime)
-├── prebid.auction.js  # Prebid.js auction orchestration
+├── prebid.auction.js  # Prebid.js auction orchestration (sandboxed ad rendering)
+├── ownAdServer.js     # Direct-sold line items from the own ad server (/api/bid)
 ├── google.only.js     # Google GAM integration
 ├── analytics.module.js
 ├── adtelligentBidAdapter.js
 ├── bidmaticBidAdapter.js
-├── customBidAdapter.js
+├── pokhvalenkoBidAdapter.js
 └── beautifulAdAdapter.js
 ```
 

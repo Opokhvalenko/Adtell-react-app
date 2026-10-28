@@ -15,9 +15,12 @@ import {
 /* ───────────────────────── config & constants ─────────────────────────── */
 
 const PORTFOLIO_MODE = !(window.__ads?.enablePrebid ?? true);
-const PREBID_SRC_PRIMARY =
-	"https://cdn.jsdelivr.net/npm/prebid.js@10.10.0/dist/prebid.js";
-const PREBID_SRC_FALLBACK = "/prebid/prebid.js";
+/**
+ * Our own Prebid build (with the Adtelligent, Bidmatic and pokhvalenko adapters), served from
+ * this origin and already included by index.html. No CDN copy: a second, generic Prebid
+ * replaced `pbjs` with a build that lacks our adapters, and came without integrity checks.
+ */
+const PREBID_SRC = "/prebid/prebid.js";
 
 const GPT_SRC = "https://securepubads.g.doubleclick.net/tag/js/gpt.js";
 const USE_GAM = !PORTFOLIO_MODE && ENABLE_GAM && !!GAM_NETWORK_CALLS;
@@ -55,7 +58,6 @@ w.__ads = w.__ads || {};
 w.__adslog = w.__adslog || [];
 w.__ads.rendered = w.__ads.rendered || {};
 w.__ads.renderedByAdId = w.__ads.renderedByAdId || new Set();
-w.__ads.registeredBidders = w.__ads.registeredBidders || new Set();
 w.__ads.alias = w.__ads.alias || {};
 w.__ads.lastAuctionAt = w.__ads.lastAuctionAt || 0;
 
@@ -407,125 +409,15 @@ function pbjsQueueFlush() {
 	w.pbjs = w.pbjs || { que: [] };
 	return new Promise((res) => w.pbjs.que.push(res));
 }
-function pickSpec(mod, names = []) {
-	if (!mod) return null;
-	const candidates = [
-		mod?.spec,
-		mod?.default,
-		mod?.bidderSpec,
-		...names.map((n) => mod?.[n]),
-		...Object.values(mod || {}),
-	];
-	for (const v of candidates) {
-		if (v && typeof v === "object" && typeof v.code === "string") {
-			return v;
-		}
-	}
-	return null;
-}
 
-async function ensurePrebid() {
+export async function ensurePrebid() {
 	if (_prebidReady) return;
 	if (_prebidPromise) return _prebidPromise;
 
 	_prebidPromise = (async () => {
 		w.pbjs = w.pbjs || { que: [] };
 
-		try {
-			await loadScript(PREBID_SRC_PRIMARY, "pbjs-lib");
-		} catch {
-			await loadScript(PREBID_SRC_FALLBACK, "pbjs-lib");
-		}
-
-		let _adtSpec = null;
-		try {
-			const m = await import("/modules/adtelligentBidAdapter.js").catch(
-				() => null,
-			);
-			_adtSpec = pickSpec(m, ["adtelligentBidAdapter"]);
-		} catch {}
-
-		function makeCreativeHtml(label, w0, h0, cpmBase) {
-			const themes = {
-				Adtelligent: {
-					bg: "linear-gradient(135deg, #059669, #047857)",
-					icon: "🎯",
-					tagline: "Smart Ad Delivery",
-				},
-				Bidmatic: {
-					bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-					icon: "📊",
-					tagline: "Programmatic Bidding",
-				},
-				Pokhvalenko: {
-					bg: "linear-gradient(135deg, #9333ea, #7c3aed)",
-					icon: "✨",
-					tagline: "Premium Creatives",
-				},
-			};
-			const t = themes[label] || {
-				bg: "linear-gradient(135deg, #4b5563, #374151)",
-				icon: "📢",
-				tagline: "Advertisement",
-			};
-			return `<div style="width:${w0}px;height:${h0}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:16px;background:${t.bg};font-family:system-ui,-apple-system,sans-serif;color:#fff;text-align:center;padding:16px;box-sizing:border-box"><span style="font-size:${w0 >= 728 ? 32 : 24}px">${t.icon}</span><span style="font-weight:800;font-size:${w0 >= 728 ? 20 : 14}px">${label}</span><span style="font-size:${w0 >= 728 ? 14 : 11}px;opacity:0.85">${t.tagline}</span><span style="font-size:10px;opacity:0.6;margin-top:4px">${w0}×${h0} · $${cpmBase.toFixed(2)} CPM</span></div>`;
-		}
-
-		const makeDemoBidder = (code, cpmBase, label) => ({
-			code,
-			supportedMediaTypes: ["banner"],
-			isBidRequestValid: () => true,
-			buildRequests: (bids, _bidderRequest) => {
-				const serverResponses = bids.map((bid) => {
-					const sizes = bid.mediaTypes?.banner?.sizes ||
-						bid.sizes || [[300, 250]];
-					const [w0, h0] = sizes[0];
-					return {
-						body: {
-							requestId: bid.bidId,
-							cpm: Number((cpmBase + Math.random() * 0.01).toFixed(2)),
-							currency: "USD",
-							width: w0,
-							height: h0,
-							ad: makeCreativeHtml(label, w0, h0, cpmBase),
-							creativeId: `${code}-${Math.random().toString(36).slice(2)}`,
-							netRevenue: true,
-							ttl: 300,
-						},
-					};
-				});
-				return {
-					method: "GET",
-					url: "data:text/plain,",
-					data: {},
-					_serverResponses: serverResponses,
-					_bids: bids,
-				};
-			},
-			interpretResponse: (_resp, req) => {
-				if (req._serverResponses) {
-					return req._serverResponses.map((r) => r.body);
-				}
-				return [];
-			},
-		});
-
-		const mark = (code) => w.__ads.registeredBidders.add(code);
-
-		w.pbjs.que.push(() => {
-			if (typeof w.pbjs.registerBidder === "function") {
-				for (const [code, cpm, label] of [
-					["adtelligent", 2.2, "Adtelligent"],
-					[BIDMATIC_ALIAS, 2.5, "Bidmatic"],
-					[POKH_ALIAS, 3.0, "Pokhvalenko"],
-				]) {
-					try {
-						w.pbjs.registerBidder(makeDemoBidder(code, cpm, label));
-					} catch {}
-					mark(code);
-				}
-			}
-		});
+		if (!w.pbjs.libLoaded) await loadScript(PREBID_SRC, "pbjs-lib");
 
 		w.pbjs.que.push(() => {
 			const consent = {
@@ -789,7 +681,6 @@ function makeAdUnits({
 
 function biddersForUnit(sizes, _unitId) {
 	const bidders = [];
-	const _isRegistered = (code) => w.__ads.registeredBidders?.has(code);
 
 	const want = ["adtelligent"];
 
@@ -1006,7 +897,7 @@ export async function initAds() {
 
 	initAnalytics();
 	await ensurePrebid();
-	await waitBiddersReady();
+	await pbjsQueueFlush();
 	await pbjsQueueFlush();
 
 	await ensureGpt();
@@ -1037,20 +928,6 @@ function initAnalytics() {
 	if (ADS_DEBUG) console.log("[analytics] init", { uid: w.__ads.uid });
 }
 
-async function waitBiddersReady() {
-	await new Promise((r) => {
-		window.pbjs = window.pbjs || { que: [] };
-		window.pbjs.que.push(r);
-	});
-	const t0 = performance.now();
-	while (
-		(window.__ads?.registeredBidders?.size || 0) < 1 &&
-		performance.now() - t0 < 500
-	) {
-		await new Promise((r) => window.pbjs.que.push(r));
-	}
-}
-
 let _auctionInFlight = false;
 
 function resetRenderFlags(codes) {
@@ -1062,7 +939,7 @@ function resetRenderFlags(codes) {
 
 export async function requestAndDisplay(adUnits) {
 	await ensurePrebid();
-	await waitBiddersReady();
+	await pbjsQueueFlush();
 	await pbjsQueueFlush();
 
 	if (_auctionInFlight) return;
@@ -1168,7 +1045,7 @@ export async function requestAndDisplay(adUnits) {
 
 export async function refreshAds(codes) {
 	await ensurePrebid();
-	await waitBiddersReady();
+	await pbjsQueueFlush();
 	await pbjsQueueFlush();
 
 	if (Date.now() - (w.__ads.lastAuctionAt || 0) < 1200) return;

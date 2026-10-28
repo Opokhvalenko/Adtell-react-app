@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { e2eCredentials } from "./credentials";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(__dirname, "../screenshots");
@@ -19,8 +20,9 @@ async function run() {
 		timeout: 30000,
 	});
 	await page.waitForTimeout(2000);
-	await page.fill('input[autocomplete="email"]', "demo@adtell.app");
-	await page.fill('input[autocomplete="current-password"]', "Demo1234!");
+	const { email, password } = e2eCredentials();
+	await page.fill('input[autocomplete="email"]', email);
+	await page.fill('input[autocomplete="current-password"]', password);
 	await page.getByRole("button", { name: /login/i }).click();
 
 	try {
@@ -66,18 +68,6 @@ async function run() {
 		fullPage: true,
 	});
 	console.log("[OK] Screenshot: deployed-ad-demo.png");
-
-	// Check ads debug
-	await page.goto(`${FE}/ads-debug`, {
-		waitUntil: "domcontentloaded",
-		timeout: 15000,
-	});
-	await page.waitForTimeout(3000);
-	await page.screenshot({
-		path: path.join(OUT, "deployed-ads-debug.png"),
-		fullPage: true,
-	});
-	console.log("[OK] Screenshot: deployed-ads-debug.png");
 
 	await browser.close();
 	console.log("Done.");

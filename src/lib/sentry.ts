@@ -1,23 +1,23 @@
 import * as Sentry from "@sentry/react";
-import { Replay } from "@sentry/replay";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || "1.0.0";
+/** Share of transactions traced in production; every one in development. */
+const TRACES_SAMPLE_RATE_PROD = 0.1;
+const TRACES_SAMPLE_RATE_DEV = 1;
 
 export function initSentry() {
-	if (
-		import.meta.env.MODE === "development" &&
-		!import.meta.env.VITE_SENTRY_DSN
-	) {
-		console.log("🔍 Sentry disabled in development mode (no DSN provided)");
-		return;
-	}
+	// Without a DSN there is nowhere to send events
+	if (!import.meta.env.VITE_SENTRY_DSN) return;
 
 	Sentry.init({
-		dsn: import.meta.env.VITE_SENTRY_DSN || undefined,
+		dsn: import.meta.env.VITE_SENTRY_DSN,
 		environment: import.meta.env.MODE || "development",
-		tracesSampleRate: import.meta.env.MODE === "production" ? 0.1 : 1.0,
+		tracesSampleRate:
+			import.meta.env.MODE === "production"
+				? TRACES_SAMPLE_RATE_PROD
+				: TRACES_SAMPLE_RATE_DEV,
 		debug: import.meta.env.MODE === "development",
-		integrations: [new Replay({ maskAllText: false, blockAllMedia: false })],
+		// No session replay: it would record what users type and read on the page
 		beforeSend(event) {
 			if (event.request?.url?.includes("password")) return null;
 			if (event.request?.data) {
@@ -35,8 +35,6 @@ export function initSentry() {
 	});
 
 	Sentry.setTag("service", "adtell-frontend");
-	Sentry.setTag("version", "1.0.0");
-	console.log("🔍 Sentry initialized for frontend monitoring");
 }
 
 export const captureException = Sentry.captureException;

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { e2eCredentials } from "./credentials";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE = "http://localhost:5173";
@@ -34,8 +35,9 @@ async function run() {
 	// Login
 	await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
 	await page.waitForTimeout(2000);
-	await page.fill('input[autocomplete="email"]', "demo@adtell.app");
-	await page.fill('input[autocomplete="current-password"]', "Demo1234!");
+	const { email, password } = e2eCredentials();
+	await page.fill('input[autocomplete="email"]', email);
+	await page.fill('input[autocomplete="current-password"]', password);
 	await page.getByRole("button", { name: /login/i }).click();
 	await page.waitForURL("**/", { timeout: 10000 });
 	console.log("[OK] Logged in");
