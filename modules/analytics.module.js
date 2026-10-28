@@ -1,4 +1,4 @@
-import { ANALYTICS_ENDPOINT as ENDPOINT } from "@/config/analytics";
+import { ANALYTICS_EVENTS as ENDPOINT } from "@/config/analytics";
 
 const Q = [];
 let T = null;
@@ -7,6 +7,8 @@ let backoffMs = 0;
 const FLUSH_MS = 1500;
 const BATCH_MAX = 50;
 const SOFT_PAYLOAD_LIMIT = 60 * 1024;
+const HTTP_TOO_MANY = 429;
+const HTTP_SERVER_ERROR = 500;
 let ctx = {};
 
 function sizeOf(obj) {
@@ -70,7 +72,14 @@ async function flushNow() {
 				body: payload,
 				keepalive: true,
 			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			// A rejected batch (4xx) would be rejected again: drop it instead of retrying forever.
+			// Only throttling, server errors and network failures are retried with backoff.
+			if (
+				!res.ok &&
+				(res.status === HTTP_TOO_MANY || res.status >= HTTP_SERVER_ERROR)
+			) {
+				throw new Error(`HTTP ${res.status}`);
+			}
 			backoffMs = 0;
 		} catch {
 			Q.unshift(...batch);

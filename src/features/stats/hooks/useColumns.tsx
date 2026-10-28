@@ -5,49 +5,14 @@ import type { MetricKey, StatRow } from "../types";
 
 const column = createColumnHelper<StatRow>();
 
-type MetricMap = Partial<Record<MetricKey, number | string | null | undefined>>;
-
-function safeDate(r: StatRow): string {
-	if (typeof r.date === "string" && r.date) return r.date;
-	const ts = r.ts;
-	if (typeof ts === "string" && ts.length >= 10) return ts.slice(0, 10);
-	return "";
-}
-
-function safeHour(r: StatRow): string {
-	if (typeof r.hour === "string" && r.hour) return r.hour;
-	const ts = r.ts;
-	if (typeof ts === "string" && ts.length >= 13)
-		return `${ts.slice(11, 13)}:00`;
-	return "";
-}
-
-function getMetric(row: StatRow, key: MetricKey): number | null {
-	const v = (row as unknown as MetricMap)[key];
-	if (v == null) return null;
-	return typeof v === "number" ? v : Number(v);
-}
-
 export function useColumns(selectedMetrics: MetricKey[]) {
 	const dimCols = useMemo(
 		() => [
-			column.accessor((r) => safeDate(r), {
-				id: "date",
-				header: "Date",
+			column.accessor((r) => r.day ?? "", {
+				id: "day",
+				header: "Day (UTC)",
 				cell: (info) => (
-					<span className="font-mono tabular-nums">
-						{String(info.getValue() ?? "")}
-					</span>
-				),
-				enableSorting: true,
-			}),
-			column.accessor((r) => safeHour(r), {
-				id: "hour",
-				header: "Hour",
-				cell: (info) => (
-					<span className="font-mono tabular-nums">
-						{String(info.getValue() ?? "")}
-					</span>
+					<span className="font-mono tabular-nums">{info.getValue()}</span>
 				),
 				enableSorting: true,
 			}),
@@ -61,16 +26,6 @@ export function useColumns(selectedMetrics: MetricKey[]) {
 				header: "Adapter",
 				enableSorting: true,
 			}),
-			column.accessor((r) => r.adUnitCode ?? "", {
-				id: "adUnitCode",
-				header: "AdUnit",
-				enableSorting: true,
-			}),
-			column.accessor((r) => String(r.creativeId ?? ""), {
-				id: "creativeId",
-				header: "Creative",
-				enableSorting: true,
-			}),
 		],
 		[],
 	);
@@ -78,18 +33,14 @@ export function useColumns(selectedMetrics: MetricKey[]) {
 	const metricCols = useMemo(
 		() =>
 			selectedMetrics.map((k) =>
-				column.accessor((row) => getMetric(row, k), {
+				column.accessor((row) => row[k] ?? null, {
 					id: k,
 					header: METRICS[k].label,
-					cell: (info) => {
-						const raw = info.getValue() as number | null | undefined;
-						const fmt = METRICS[k].fmt;
-						return (
-							<span className="tabular-nums">
-								{fmt ? fmt(raw ?? undefined) : String(raw ?? "")}
-							</span>
-						);
-					},
+					cell: (info) => (
+						<span className="tabular-nums">
+							{METRICS[k].fmt(info.getValue())}
+						</span>
+					),
 					enableSorting: true,
 					enableColumnFilter: false,
 				}),

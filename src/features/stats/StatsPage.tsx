@@ -5,38 +5,29 @@ import { MetricsChips } from "./components/MetricsChips";
 import { StatsTable } from "./components/StatsTable";
 import { METRICS } from "./constants/metrics";
 import { useColumns } from "./hooks/useColumns";
+import { useDebouncedValue } from "./hooks/useDebouncedValue";
 import { useStatsQuery } from "./hooks/useStatsQuery";
-import type { MetricKey, StatRow } from "./types";
+import type { MetricKey } from "./types";
 import { useSavedViews } from "./useSavedViews";
+import { rowsToCsv } from "./utils/csv";
+import { addDays, utcToday } from "./utils/dates";
 
-function useTodayRange() {
-	const now = new Date();
-	const to = now.toISOString().slice(0, 10);
-	const from = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 2)
-		.toISOString()
-		.slice(0, 10);
-	return { from, to };
-}
+/** Today and the two days before it, in UTC days like the backend. */
+const DEFAULT_RANGE_DAYS = 2;
+/** "Group by" is free text: request once typing pauses, not on every key (rate limit). */
+const GROUP_BY_DEBOUNCE_MS = 400;
 
-function rowsToCsv(rows: Array<Record<string, unknown>>) {
-	if (!rows.length) return "";
-	const headers = Object.keys(rows[0]);
-	const esc = (v: unknown) => {
-		if (v == null) return "";
-		const s = String(v);
-		return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-	};
-	const lines = [
-		headers.join(","),
-		...rows.map((r) => headers.map((h) => esc(r[h])).join(",")),
-	];
-	return lines.join("\n");
-}
+const COPY_TEXT = {
+	done: "CSV copied to the clipboard.",
+	failed: "The clipboard is not available here.",
+} as const;
 
 export default function StatsPage() {
-	const { from: defFrom, to: defTo } = useTodayRange();
-	const [from, setFrom] = useState(defFrom);
-	const [to, setTo] = useState(defTo);
+	const [to, setTo] = useState(utcToday);
+	const [from, setFrom] = useState(() =>
+		addDays(utcToday(), -DEFAULT_RANGE_DAYS),
+	);
+	const [copyNotice, setCopyNotice] = useState("");
 	const [groupBy, setGroupBy] = useState("day,event,adapter");
 	const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>([
 		"count",
@@ -44,6 +35,8 @@ export default function StatsPage() {
 		"cpmAvg",
 	]);
 	const [chartOpen, setChartOpen] = useState(false);
+
+	const debouncedGroupBy = useDebouncedValue(groupBy, GROUP_BY_DEBOUNCE_MS);
 
 	const { names, saveView, getView } = useSavedViews();
 	const [viewName, setViewName] = useState("");
@@ -55,7 +48,7 @@ export default function StatsPage() {
 	} = useStatsQuery({
 		from,
 		to,
-		groupBy,
+		groupBy: debouncedGroupBy,
 		metrics: selectedMetrics,
 	});
 
@@ -79,23 +72,21 @@ export default function StatsPage() {
 	}
 
 	const exportCSV = () => {
-		const csv = rowsToCsv(data as unknown as Array<Record<string, unknown>>);
+		const csv = rowsToCsv(data);
 		const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
-		const stamp = new Date().toISOString().slice(0, 10);
-		a.download = `stats_${stamp}.csv`;
+		a.download = `stats_${from}_${to}.csv`;
 		a.click();
 		URL.revokeObjectURL(url);
 	};
 	const copyCSV = async () => {
-		const csv = rowsToCsv(data as unknown as Array<Record<string, unknown>>);
 		try {
-			await navigator.clipboard.writeText(csv);
-			console.info("[stats] CSV copied to clipboard");
+			await navigator.clipboard.writeText(rowsToCsv(data));
+			setCopyNotice(COPY_TEXT.done);
 		} catch {
-			alert("Clipboard is not available in this context.");
+			setCopyNotice(COPY_TEXT.failed);
 		}
 	};
 
@@ -118,6 +109,10 @@ export default function StatsPage() {
 				onCopyCSV={copyCSV}
 			/>
 
+			<output className="block text-sm text-zinc-600 dark:text-zinc-300">
+				{copyNotice}
+			</output>
+
 			<MetricsChips
 				all={METRICS}
 				selected={selectedMetrics}
@@ -125,7 +120,7 @@ export default function StatsPage() {
 			/>
 
 			<StatsTable
-				data={data as StatRow[]}
+				data={data}
 				columns={columns}
 				selectedMetrics={selectedMetrics}
 				isLoading={isLoading}
@@ -135,7 +130,7 @@ export default function StatsPage() {
 			<ChartModal
 				open={chartOpen}
 				onClose={() => setChartOpen(false)}
-				data={data as StatRow[]}
+				data={data}
 				metrics={selectedMetrics}
 				metricMeta={METRICS}
 			/>

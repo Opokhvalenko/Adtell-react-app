@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-table";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { statsErrorMessage } from "../api";
 import type { MetricKey, StatRow } from "../types";
 
 type Props = {
@@ -33,18 +34,6 @@ function getColId(c: ColumnDef<StatRow, unknown>, index: number): string {
 		return String(ak);
 	return `col-${index}`;
 }
-function errMessage(err: unknown): string {
-	if (err && typeof err === "object" && "message" in err) {
-		const m = (err as { message?: unknown }).message;
-		if (typeof m === "string") return m;
-	}
-	try {
-		return JSON.stringify(err);
-	} catch {
-		return String(err);
-	}
-}
-
 export function StatsTable({
 	data,
 	columns,
@@ -79,12 +68,9 @@ export function StatsTable({
 	);
 
 	const widthById: Record<string, string> = {
-		date: "9rem",
-		hour: "7rem",
+		day: "9rem",
 		event: "12rem",
 		adapter: "10rem",
-		adUnitCode: "11rem",
-		creativeId: "9rem",
 	};
 	const metricWidth = "8.5rem";
 
@@ -181,8 +167,12 @@ export function StatsTable({
 						</tr>
 					) : error ? (
 						<tr>
-							<td className="p-4 text-red-600" colSpan={columns.length}>
-								{errMessage(error)}
+							<td
+								role="alert"
+								className="p-4 text-red-600"
+								colSpan={columns.length}
+							>
+								{statsErrorMessage(error)}
 							</td>
 						</tr>
 					) : table.getRowModel().rows.length === 0 ? (

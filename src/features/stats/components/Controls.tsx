@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { utcToday } from "../utils/dates";
 
 export type ControlsProps = {
 	from: string;
@@ -30,6 +31,9 @@ function parseYMD(s: string) {
 	const [y, m, d] = s.split("-").map(Number);
 	return new Date(y, (m || 1) - 1, d || 1);
 }
+/** Presets start from the current UTC day: the statistics are grouped by UTC day. */
+const utcTodayAsCalendarDate = () => parseYMD(utcToday());
+
 function toYMD(d: Date) {
 	const yyyy = d.getFullYear();
 	const mm = `${d.getMonth() + 1}`.padStart(2, "0");
@@ -111,14 +115,14 @@ function DateRangePickerLite({
 		{
 			label: "Today",
 			calc: () => {
-				const d = new Date();
+				const d = utcTodayAsCalendarDate();
 				return [d, d];
 			},
 		},
 		{
 			label: "Yesterday",
 			calc: () => {
-				const d = new Date();
+				const d = utcTodayAsCalendarDate();
 				d.setDate(d.getDate() - 1);
 				return [d, d];
 			},
@@ -126,8 +130,8 @@ function DateRangePickerLite({
 		{
 			label: "Last 7 days",
 			calc: () => {
-				const e = new Date();
-				const s = new Date();
+				const e = utcTodayAsCalendarDate();
+				const s = utcTodayAsCalendarDate();
 				s.setDate(s.getDate() - 6);
 				return [s, e];
 			},
@@ -135,8 +139,8 @@ function DateRangePickerLite({
 		{
 			label: "Last 14 days",
 			calc: () => {
-				const e = new Date();
-				const s = new Date();
+				const e = utcTodayAsCalendarDate();
+				const s = utcTodayAsCalendarDate();
 				s.setDate(s.getDate() - 13);
 				return [s, e];
 			},
@@ -144,8 +148,8 @@ function DateRangePickerLite({
 		{
 			label: "Last 30 days",
 			calc: () => {
-				const e = new Date();
-				const s = new Date();
+				const e = utcTodayAsCalendarDate();
+				const s = utcTodayAsCalendarDate();
 				s.setDate(s.getDate() - 29);
 				return [s, e];
 			},
@@ -153,7 +157,7 @@ function DateRangePickerLite({
 		{
 			label: "This Month",
 			calc: () => {
-				const n = new Date();
+				const n = utcTodayAsCalendarDate();
 				const s = new Date(n.getFullYear(), n.getMonth(), 1);
 				const e = new Date(n.getFullYear(), n.getMonth() + 1, 0);
 				return [s, e];
@@ -162,7 +166,7 @@ function DateRangePickerLite({
 		{
 			label: "Last Month",
 			calc: () => {
-				const n = new Date();
+				const n = utcTodayAsCalendarDate();
 				const s = new Date(n.getFullYear(), n.getMonth() - 1, 1);
 				const e = new Date(n.getFullYear(), n.getMonth(), 0);
 				return [s, e];
@@ -197,7 +201,7 @@ function DateRangePickerLite({
 				id={labelId}
 				className="text-sm font-semibold text-gray-700 dark:text-gray-200 block mb-1"
 			>
-				Metrics
+				Dates (UTC)
 			</span>
 
 			<button

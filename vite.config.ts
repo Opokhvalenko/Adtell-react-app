@@ -17,7 +17,10 @@ import { defineConfig } from "vitest/config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /* ───────────────────────── virtual:ads-config ────────────────────────── */
-function adsVirtualConfig(env: Record<string, string>): PluginOption {
+function adsVirtualConfig(
+	env: Record<string, string>,
+	isDev: boolean,
+): PluginOption {
 	return {
 		name: "virtual-ads-config",
 		resolveId: (id) => (id === "virtual:ads-config" ? id : null),
@@ -28,7 +31,7 @@ function adsVirtualConfig(env: Record<string, string>): PluginOption {
 			return `
         export const ENABLE_PREBID = ${b(env.VITE_ENABLE_PREBID)};
         export const ENABLE_GAM = ${b(env.VITE_ENABLE_GAM)};
-        export const ADS_DEBUG = ${b(env.VITE_ADS_DEBUG)};
+        export const ADS_DEBUG = ${isDev && b(env.VITE_ADS_DEBUG)};
         export const ENABLE_BIDMATIC = ${b(env.VITE_ENABLE_BIDMATIC)};
         export const BIDMATIC_SOURCE = ${n(env.VITE_BIDMATIC_SOURCE)};
         export const BIDMATIC_SPN = ${JSON.stringify(env.VITE_BIDMATIC_SPN ?? "")};
@@ -307,7 +310,8 @@ export default defineConfig(({ mode }) => {
 
 			tailwindcss(),
 			svgr(),
-			adsVirtualConfig(env),
+			// The debug page exposes the raw auction log: development builds only
+			adsVirtualConfig(env, isDev),
 			adsModulePlugin(env),
 			analyticsModulePlugin(env),
 			adsBridgePlugin(),
@@ -343,6 +347,8 @@ export default defineConfig(({ mode }) => {
 			target: "es2022",
 			sourcemap: enableSentry ? "hidden" : false,
 			minify: "terser",
+			// No console output in production; uncaught errors still reach Sentry via its global handlers
+			terserOptions: { compress: { drop_console: true, drop_debugger: true } },
 			chunkSizeWarningLimit: 1000,
 			rollupOptions: {
 				output: {

@@ -1,76 +1,59 @@
 import { ANALYTICS_STATS } from "@/config/analytics";
-import { API_BASE } from "@/lib/apiBase";
 import { apiFetch } from "@/lib/http";
-import { reportError } from "@/reporting/errors-lazy";
 import type { MetricKey, StatRow } from "./types";
-import { buildStatsFromPrebidLog } from "./utils/fromPrebidLog";
 
 export interface StatsQuery {
-	from?: string;
-	to?: string;
-	groupBy?: string;
-	metrics?: MetricKey[];
-	limit?: number;
-	offset?: number;
-	event?: string;
-	adapter?: string;
-	adUnitCode?: string;
-	creativeId?: string;
+	from: string;
+	to: string;
+	groupBy: string;
+	metrics: MetricKey[];
 }
 
-function joinUrl(base: string, path: string) {
-	if (/^https?:\/\//i.test(path)) return path;
-	return base.replace(/\/$/, "") + (path.startsWith("/") ? path : `/${path}`);
+/** A failed stats request; the UI maps the status to its own message, never the server text. */
+export class StatsRequestError extends Error {
+	constructor(readonly status: number) {
+		super(`Stats request failed with status ${status}`);
+		this.name = "StatsRequestError";
+	}
 }
 
 function isStatRowArray(v: unknown): v is StatRow[] {
 	return Array.isArray(v) && v.every((x) => !!x && typeof x === "object");
 }
 
-function extractRows(payload: unknown): StatRow[] | null {
-	if (isStatRowArray(payload)) return payload;
+/**
+ * Server statistics only. An error is shown as an error: substituting local auction data made
+ * a broken backend look like a working one.
+ */
+export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
+	const params = new URLSearchParams({
+		from: q.from,
+		to: q.to,
+		groupBy: q.groupBy,
+	});
+	if (q.metrics.length) params.set("metrics", q.metrics.join(","));
 
-	if (payload && typeof payload === "object") {
-		const obj = payload as { data?: unknown; rows?: unknown };
-		if (isStatRowArray(obj.data)) return obj.data;
-		if (isStatRowArray(obj.rows)) return obj.rows;
-	}
-	return null;
+	const res = await apiFetch(`${ANALYTICS_STATS}?${params.toString()}`);
+	if (!res.ok) throw new StatsRequestError(res.status);
+	const data: unknown = await res.json();
+	return isStatRowArray(data) ? data : [];
 }
 
-export async function fetchStats(q: StatsQuery): Promise<StatRow[]> {
-	const params = new URLSearchParams();
-	if (q.from) params.set("from", q.from);
-	if (q.to) params.set("to", q.to);
-	if (q.groupBy) params.set("groupBy", q.groupBy);
-	if (q.metrics?.length) params.set("metrics", q.metrics.join(","));
-	if (q.limit) params.set("limit", String(q.limit));
-	if (q.offset) params.set("offset", String(q.offset));
-	if (q.event) params.set("event", q.event);
-	if (q.adapter) params.set("adapter", q.adapter);
-	if (q.adUnitCode) params.set("adUnitCode", q.adUnitCode);
-	if (q.creativeId) params.set("creativeId", q.creativeId);
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_BAD_REQUEST = 400;
+const HTTP_TOO_MANY = 429;
 
-	const url = `${joinUrl(API_BASE, ANALYTICS_STATS)}?${params.toString()}`;
+export const STATS_ERROR_TEXT = {
+	session: "Your session has expired. Please sign in again.",
+	range: "Choose a valid date range of up to 90 days.",
+	busy: "Too many requests. Try again in a minute.",
+	unavailable: "Statistics are temporarily unavailable.",
+} as const;
 
-	try {
-		const res = await apiFetch(url);
-		if (res.ok) {
-			const ct = res.headers.get("content-type") ?? "";
-			if (ct.includes("application/json")) {
-				const data = (await res.json()) as unknown;
-				const rows = extractRows(data);
-				if (rows?.length) return rows;
-			}
-		}
-	} catch (err) {
-		reportError(err, { where: "fetchStats(server)", url });
-	}
-
-	try {
-		return buildStatsFromPrebidLog(q);
-	} catch (err) {
-		reportError(err, { where: "fetchStats(fallback)" });
-		throw err;
-	}
+export function statsErrorMessage(error: unknown): string {
+	const status = error instanceof StatsRequestError ? error.status : 0;
+	if (status === HTTP_UNAUTHORIZED) return STATS_ERROR_TEXT.session;
+	if (status === HTTP_BAD_REQUEST) return STATS_ERROR_TEXT.range;
+	if (status === HTTP_TOO_MANY) return STATS_ERROR_TEXT.busy;
+	return STATS_ERROR_TEXT.unavailable;
 }

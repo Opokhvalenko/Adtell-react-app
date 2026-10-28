@@ -19,7 +19,7 @@ import { type SavedView, useSavedViews } from "./useSavedViews";
 
 const sampleView: SavedView = {
 	name: "My View",
-	metrics: ["impressions", "clicks"],
+	metrics: ["count", "wins"],
 	groupBy: "date",
 };
 
