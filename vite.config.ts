@@ -223,24 +223,6 @@ export default defineConfig(({ mode }) => {
 		"/assets": { target: API_TARGET, changeOrigin: true },
 		"/public": { target: API_TARGET, changeOrigin: true },
 
-		"/api/stats": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) =>
-				path.replace(/^\/api\/stats/, "/api/analytics/stats"),
-		},
-		"/api/report": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) =>
-				path.replace(/^\/api\/report/, "/api/analytics/events"),
-		},
-		"/analytics": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) => path.replace(/^\/analytics/, "/api/analytics"),
-		},
-
 		"/api": { target: API_TARGET, changeOrigin: true },
 
 		"/feed": {
@@ -258,11 +240,6 @@ export default defineConfig(({ mode }) => {
 			changeOrigin: true,
 			rewrite: (path: string) => path.replace(/^\/auth/, "/api/auth"),
 		},
-		"/upload": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) => path.replace(/^\/upload/, "/api/upload"),
-		},
 		"/adserver": {
 			target: API_TARGET,
 			changeOrigin: true,
@@ -274,6 +251,18 @@ export default defineConfig(({ mode }) => {
 		"/uploads": { target: API_TARGET, changeOrigin: true },
 		"/create-lineitem": { target: API_TARGET, changeOrigin: true },
 		"/create": { target: API_TARGET, changeOrigin: true },
+	};
+
+	/**
+	 * `vite preview` serves the built `dist/`, whose `/assets` are the app's own files: only the
+	 * paths `vercel.json` rewrites to the backend go there (the dev proxy also sends `/assets`).
+	 */
+	const previewProxy: Record<string, ProxyOptions> = {
+		"/api": { target: API_TARGET, changeOrigin: true },
+		"/auth": proxy["/auth"],
+		"/public": { target: API_TARGET, changeOrigin: true },
+		"/uploads": { target: API_TARGET, changeOrigin: true },
+		"/create-lineitem": { target: API_TARGET, changeOrigin: true },
 	};
 
 	if (PROXY_ADS_DEBUG) {
@@ -304,6 +293,8 @@ export default defineConfig(({ mode }) => {
 			fs: { strict: false },
 			origin: CLIENT_ORIGIN,
 		},
+
+		preview: { proxy: previewProxy },
 
 		plugins: [
 			mockPokhPlugin(env),
