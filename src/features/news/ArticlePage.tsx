@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { fetchArticleByUrl } from "@/lib/api";
+import {
+	ARTICLE_ERROR_TEXT,
+	articleErrorMessage,
+	fetchArticleByUrl,
+} from "@/lib/api";
 import { renderSafeHtml } from "./renderSafeHtml";
 import { useFeed } from "./useFeed";
 
@@ -15,6 +19,18 @@ export default function ArticlePage() {
 	const url = state?.url ?? item?.link;
 	const initialTitle = state?.title ?? item?.title ?? "Article";
 
+	// A new key per link: opening another article starts from a clean state, not the last
+	// article's error or text
+	return <ArticleView key={url ?? ""} url={url} initialTitle={initialTitle} />;
+}
+
+function ArticleView({
+	url,
+	initialTitle,
+}: {
+	url: string | undefined;
+	initialTitle: string;
+}) {
 	const [title, setTitle] = useState(initialTitle);
 	const [html, setHtml] = useState<string>("");
 	const [error, setError] = useState<string | null>(null);
@@ -24,7 +40,7 @@ export default function ArticlePage() {
 		let cancelled = false;
 		(async () => {
 			if (!url) {
-				setError("No URL provided");
+				setError(ARTICLE_ERROR_TEXT.missingUrl);
 				setLoading(false);
 				return;
 			}
@@ -35,13 +51,7 @@ export default function ArticlePage() {
 					setHtml(a.html || "");
 				}
 			} catch (e: unknown) {
-				const message =
-					e instanceof Error
-						? e.message
-						: typeof e === "string"
-							? e
-							: "Failed to load article";
-				if (!cancelled) setError(message);
+				if (!cancelled) setError(articleErrorMessage(e));
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
