@@ -209,9 +209,6 @@ export default defineConfig(({ mode }) => {
 	const API_TARGET = env.VITE_API_TARGET || "http://localhost:3000";
 	const CLIENT_ORIGIN = env.VITE_APP_ORIGIN || "http://localhost:5173";
 
-	const PROXY_ADS_DEBUG =
-		String(env.VITE_PROXY_ADS_DEBUG || "false") === "true";
-
 	const enableSentry = !!env.VITE_SENTRY_DSN;
 	const uploadSourcemaps =
 		enableSentry && mode === "production" && env.SENTRY_UPLOAD === "true";
@@ -219,65 +216,21 @@ export default defineConfig(({ mode }) => {
 	const releaseName =
 		env.SENTRY_RELEASE || env.GITHUB_SHA || `build-${Date.now()}`;
 
-	const proxy: Record<string, ProxyOptions> = {
-		"/assets": { target: API_TARGET, changeOrigin: true },
-		"/public": { target: API_TARGET, changeOrigin: true },
-
-		"/api": { target: API_TARGET, changeOrigin: true },
-
-		"/feed": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) => path.replace(/^\/feed/, "/api/feed"),
-		},
-		"/article": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) => path.replace(/^\/article/, "/api/article"),
-		},
-		"/auth": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) => path.replace(/^\/auth/, "/api/auth"),
-		},
-		"/adserver": {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) => path.replace(/^\/adserver/, "/api"),
-		},
-
-		"/api/bid": { target: API_TARGET, changeOrigin: true },
-		"/docs": { target: API_TARGET, changeOrigin: true },
-		"/uploads": { target: API_TARGET, changeOrigin: true },
-		"/create-lineitem": { target: API_TARGET, changeOrigin: true },
-		"/create": { target: API_TARGET, changeOrigin: true },
-	};
-
 	/**
-	 * `vite preview` serves the built `dist/`, whose `/assets` are the app's own files: only the
-	 * paths `vercel.json` rewrites to the backend go there (the dev proxy also sends `/assets`).
+	 * The paths `vercel.json` sends to the backend, so the build behaves the same under
+	 * `vite preview`. `vite preview` serves the built `dist/`, whose `/assets` are the app's own.
 	 */
 	const previewProxy: Record<string, ProxyOptions> = {
 		"/api": { target: API_TARGET, changeOrigin: true },
-		"/auth": proxy["/auth"],
 		"/public": { target: API_TARGET, changeOrigin: true },
 		"/uploads": { target: API_TARGET, changeOrigin: true },
 		"/create-lineitem": { target: API_TARGET, changeOrigin: true },
 	};
-
-	if (PROXY_ADS_DEBUG) {
-		proxy["/ads-debug"] = {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) => path.replace(/^\/ads-debug/, "/api/ads-debug"),
-		};
-		proxy["/ads/debug"] = {
-			target: API_TARGET,
-			changeOrigin: true,
-			rewrite: (path: string) =>
-				path.replace(/^\/ads\/debug/, "/api/ads/debug"),
-		};
-	}
+	/** Development adds the API docs of the local backend. */
+	const proxy: Record<string, ProxyOptions> = {
+		...previewProxy,
+		"/docs": { target: API_TARGET, changeOrigin: true },
+	};
 
 	return {
 		envPrefix: "VITE_",

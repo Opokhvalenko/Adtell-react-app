@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 type VercelConfig = {
+	rewrites?: Array<{ source: string; destination: string }>;
 	headers?: Array<{
 		source: string;
 		headers: Array<{ key: string; value: string }>;
@@ -62,5 +63,25 @@ describe("production security headers (vercel.json)", () => {
 		expect(header("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
 		expect(header("Permissions-Policy")).toContain("camera=()");
 		expect(header("Access-Control-Allow-Origin")).not.toBe("*");
+	});
+});
+
+describe("rewrites to the backend (vercel.json)", () => {
+	const BACKEND = "https://addtell-backend.onrender.com";
+	const toBackend = (config.rewrites ?? [])
+		.filter((r) => r.destination.startsWith(BACKEND))
+		.map((r) => r.source);
+
+	it("only the paths the backend serves; a removed one would answer 404 through the site", () => {
+		expect(toBackend.sort()).toEqual(
+			["/api/:path*", "/create-lineitem", "/public/:path*"].sort(),
+		);
+	});
+
+	it("everything else falls back to the app", () => {
+		expect(config.rewrites?.at(-1)).toEqual({
+			source: "/(.*)",
+			destination: "/",
+		});
 	});
 });
