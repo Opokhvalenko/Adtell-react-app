@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiRegister } from "@/lib/auth";
-import { toMessage } from "@/lib/httpError";
+import { apiRegister, authErrorMessage } from "@/lib/auth";
 import { useAuth } from "@/store/auth";
 import AuthForm from "./AuthForm";
 import { RegisterSchema, type RegisterValues } from "./schemas";
@@ -40,7 +39,7 @@ export default function RegisterForm() {
 				try {
 					await apiRegister(values.email.trim(), values.password);
 				} catch (e) {
-					setErr(toMessage(e, "Registration failed"));
+					setErr(authErrorMessage(e));
 					setPending(false);
 					return;
 				}

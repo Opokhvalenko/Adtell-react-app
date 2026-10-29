@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AUTH_ERROR_TEXT, AuthRequestError } from "@/lib/auth";
 import RegisterForm from "./RegisterForm";
 
 const mockNavigate = vi.fn();
@@ -17,7 +18,8 @@ vi.mock("react-router-dom", async () => {
 
 const mockRegister = vi.fn();
 const mockHydrate = vi.fn();
-vi.mock("@/lib/auth", () => ({
+vi.mock("@/lib/auth", async () => ({
+	...(await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth")),
 	apiRegister: (...args: unknown[]) => mockRegister(...args),
 }));
 
@@ -97,15 +99,15 @@ describe("RegisterForm integration", () => {
 		});
 	});
 
-	it("shows error when registration fails", async () => {
-		mockRegister.mockRejectedValue(new Error("Email already exists"));
+	it("an email that is already registered gets its own message", async () => {
+		mockRegister.mockRejectedValue(new AuthRequestError(409));
 
 		renderRegister();
 		fillForm();
 		fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
 		await waitFor(() => {
-			expect(screen.getByText("Email already exists")).toBeInTheDocument();
+			expect(screen.getByText(AUTH_ERROR_TEXT.taken)).toBeInTheDocument();
 		});
 
 		expect(mockHydrate).not.toHaveBeenCalled();

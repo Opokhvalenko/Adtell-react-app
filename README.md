@@ -6,6 +6,8 @@ A news application with a built-in programmatic advertising platform. Features r
 
 [Live Demo](https://adtell-react-app.vercel.app/) | [API Docs](https://addtell-backend.onrender.com/docs) | [Backend Repo](https://github.com/Opokhvalenko/addtell-parser)
 
+To look around without registering, open **Login** and press **Try the demo account** — the server signs you into a shared demo account, no password needed.
+
 > **Note:** Disable your ad blocker to see the ad auction system in action.
 > Backend is hosted on Render free tier — first request may take up to 5 minutes to wake up.
 
